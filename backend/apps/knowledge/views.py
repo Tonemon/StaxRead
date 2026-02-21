@@ -1,3 +1,6 @@
+import tempfile
+import os
+
 from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.decorators import action
@@ -6,6 +9,10 @@ from rest_framework.viewsets import ModelViewSet
 
 from apps.knowledge.models import GitCredential, KnowledgeBase, KBAccess, Source
 from apps.knowledge.serializers import GitCredentialSerializer, KnowledgeBaseSerializer, SourceSerializer
+from apps.ingestion.tasks.pdf import ingest_pdf
+from apps.ingestion.tasks.epub import ingest_epub
+from apps.ingestion.tasks.git import ingest_git
+from apps.ingestion.storage import upload_file
 
 User = get_user_model()
 
@@ -68,3 +75,52 @@ class SourceViewSet(ModelViewSet):
             access_entries__user=self.request.user
         ).values_list("id", flat=True)
         return Source.objects.filter(kb__in=accessible_kb_ids)
+
+    def create(self, request, *args, **kwargs):
+        source_type = request.data.get("source_type")
+        file_obj = request.FILES.get("file")
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        source = serializer.save()
+
+        # Handle file upload for PDF/EPUB
+        if file_obj and source_type in (Source.SourceType.PDF, Source.SourceType.EPUB):
+            content_type_map = {
+                Source.SourceType.PDF: "application/pdf",
+                Source.SourceType.EPUB: "application/epub+zip",
+            }
+            tmp = tempfile.NamedTemporaryFile(
+                suffix=os.path.splitext(file_obj.name)[1],
+                delete=False,
+            )
+            try:
+                for chunk in file_obj.chunks():
+                    tmp.write(chunk)
+                tmp.close()
+                object_name = upload_file(source.pk, tmp.name, content_type_map[source_type])
+                source.storage_key = object_name
+                source.save(update_fields=["storage_key"])
+            finally:
+                if os.path.exists(tmp.name):
+                    os.unlink(tmp.name)
+
+        # Dispatch ingestion task
+        source_id = str(source.pk)
+        if source_type == Source.SourceType.PDF:
+            ingest_pdf.delay(source_id)
+        elif source_type == Source.SourceType.EPUB:
+            ingest_epub.delay(source_id)
+        elif source_type == Source.SourceType.GIT:
+            ingest_git.delay(source_id)
+
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    @action(detail=True, methods=["get"])
+    def status(self, request, pk=None):
+        source = self.get_object()
+        return Response({
+            "status": source.status,
+            "error_message": source.error_message,
+        })
