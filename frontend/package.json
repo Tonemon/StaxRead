@@ -10,7 +10,7 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
-    "@nuxt/ui-pro": "^1.4.0",
+    "@nuxt/ui": "^3.0.0",
     "@pinia/nuxt": "^0.5.5",
     "@pinia-plugin-persistedstate/nuxt": "^1.2.1",
     "@tato30/vue-pdf": "^1.9.0",

@@ -1,7 +1,7 @@
 export default defineNuxtConfig({
   srcDir: "app",
   modules: [
-    "@nuxt/ui-pro",
+    "@nuxt/ui",
     "@pinia/nuxt",
     "@pinia-plugin-persistedstate/nuxt",
     "@vueuse/nuxt",
