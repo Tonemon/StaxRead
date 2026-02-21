@@ -4,8 +4,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
-from apps.knowledge.models import KnowledgeBase, KBAccess
-from apps.knowledge.serializers import KnowledgeBaseSerializer
+from apps.knowledge.models import GitCredential, KnowledgeBase, KBAccess, Source
+from apps.knowledge.serializers import GitCredentialSerializer, KnowledgeBaseSerializer, SourceSerializer
 
 User = get_user_model()
 
@@ -48,3 +48,23 @@ class KnowledgeBaseViewSet(ModelViewSet):
         user_id = request.data.get("user_id")
         KBAccess.objects.filter(kb=kb, user__pk=user_id).delete()
         return Response({"detail": "Access removed."})
+
+
+class GitCredentialViewSet(ModelViewSet):
+    serializer_class = GitCredentialSerializer
+
+    def get_queryset(self):
+        return GitCredential.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class SourceViewSet(ModelViewSet):
+    serializer_class = SourceSerializer
+
+    def get_queryset(self):
+        accessible_kb_ids = KnowledgeBase.objects.filter(
+            access_entries__user=self.request.user
+        ).values_list("id", flat=True)
+        return Source.objects.filter(kb__in=accessible_kb_ids)
