@@ -24,7 +24,7 @@ services:
       redis:
         condition: service_healthy
       qdrant:
-        condition: service_healthy
+        condition: service_started
       minio:
         condition: service_started
 
@@ -42,7 +42,7 @@ services:
       redis:
         condition: service_healthy
       qdrant:
-        condition: service_healthy
+        condition: service_started
       minio:
         condition: service_started
 
@@ -88,11 +88,6 @@ services:
     restart: unless-stopped
     volumes:
       - qdrant_data:/qdrant/storage
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q -O- http://localhost:6333/healthz || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   minio:
     image: minio/minio
