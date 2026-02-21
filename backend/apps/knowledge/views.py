@@ -12,7 +12,7 @@ from apps.knowledge.serializers import GitCredentialSerializer, KnowledgeBaseSer
 from apps.ingestion.tasks.pdf import ingest_pdf
 from apps.ingestion.tasks.epub import ingest_epub
 from apps.ingestion.tasks.git import ingest_git
-from apps.ingestion.storage import upload_file
+from apps.ingestion.storage import upload_file, get_presigned_url
 
 User = get_user_model()
 
@@ -124,3 +124,35 @@ class SourceViewSet(ModelViewSet):
             "status": source.status,
             "error_message": source.error_message,
         })
+
+    @action(detail=True, methods=["get"])
+    def document(self, request, pk=None):
+        from django.conf import settings
+        source = self.get_object()  # raises 404 if not in queryset (access enforced)
+
+        if source.source_type == Source.SourceType.PDF:
+            ext = os.path.splitext(source.storage_key)[1].lstrip(".")
+            url = get_presigned_url(source.pk, ext)
+            return Response({"url": url, "source_type": source.source_type})
+
+        elif source.source_type == Source.SourceType.EPUB:
+            ext = os.path.splitext(source.storage_key)[1].lstrip(".")
+            url = get_presigned_url(source.pk, ext)
+            return Response({"url": url, "source_type": source.source_type})
+
+        elif source.source_type == Source.SourceType.GIT:
+            file_path_param = request.query_params.get("file", "")
+            if not file_path_param:
+                return Response({"detail": "file parameter required for git sources."}, status=400)
+            repo_path = os.path.join(settings.GIT_REPOS_DIR, str(source.pk))
+            full_path = os.path.normpath(os.path.join(repo_path, file_path_param))
+            # Security: ensure path stays within repo
+            if not full_path.startswith(repo_path):
+                return Response({"detail": "Invalid file path."}, status=400)
+            if not os.path.exists(full_path):
+                return Response({"detail": "File not found."}, status=status.HTTP_404_NOT_FOUND)
+            with open(full_path, "r", encoding="utf-8", errors="replace") as f:
+                content = f.read()
+            return Response({"content": content, "file": file_path_param, "source_type": source.source_type})
+
+        return Response({"detail": "Unsupported source type."}, status=400)
