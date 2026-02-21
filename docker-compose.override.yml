@@ -1,0 +1,33 @@
+services:
+  django:
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+
+  celery:
+    command: celery -A config worker -l debug --concurrency=1
+    volumes:
+      - ./backend:/app
+      - model_cache:/app/model_cache
+      - git_repos:/app/git_repos
+
+  nuxt:
+    command: npm run dev
+    volumes:
+      - ./frontend:/app
+    ports:
+      - "3000:3000"
+
+  qdrant:
+    ports:
+      - "6333:6333"
+
+  postgres:
+    ports:
+      - "5432:5432"
+
+  minio:
+    ports:
+      - "9001:9001"

@@ -1,0 +1,45 @@
+# Django
+django==5.1.*
+djangorestframework==3.15.*
+djangorestframework-simplejwt==5.3.*
+django-cors-headers==4.4.*
+django-celery-beat==2.7.*
+django-environ==0.11.*
+gunicorn==22.*
+
+# Database
+psycopg[binary]==3.2.*
+
+# Celery
+celery==5.4.*
+redis==5.1.*
+
+# Vector DB
+qdrant-client==1.12.*
+fastembed==0.4.*
+
+# Embeddings
+sentence-transformers==3.3.*
+torch==2.5.*
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+# Storage
+minio==7.2.*
+
+# Document processing
+PyMuPDF==1.25.*
+ebooklib==0.18.*
+beautifulsoup4==4.12.*
+lxml==5.3.*
+
+# Text splitting
+langchain-text-splitters==0.3.*
+
+# Security
+cryptography==44.*
+
+# Testing
+pytest==8.*
+pytest-django==4.9.*
+pytest-mock==3.14.*
+factory-boy==3.3.*
