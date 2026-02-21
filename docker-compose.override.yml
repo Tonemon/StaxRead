@@ -27,3 +27,7 @@ services:
   postgres:
     ports:
       - "5432:5432"
+
+  minio:
+    ports:
+      - "9001:9001"
