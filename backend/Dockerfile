@@ -16,3 +16,8 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV MODEL_CACHE_DIR=/app/model_cache
 ENV GIT_REPOS_DIR=/app/git_repos
+
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]

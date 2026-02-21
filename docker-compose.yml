@@ -19,10 +19,14 @@ services:
       - model_cache:/app/model_cache
       - git_repos:/app/git_repos
     depends_on:
-      - postgres
-      - redis
-      - qdrant
-      - minio
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      minio:
+        condition: service_started
 
   celery:
     build: ./backend
@@ -33,10 +37,14 @@ services:
       - model_cache:/app/model_cache
       - git_repos:/app/git_repos
     depends_on:
-      - postgres
-      - redis
-      - qdrant
-      - minio
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      minio:
+        condition: service_started
 
   celery-beat:
     build: ./backend
@@ -44,14 +52,21 @@ services:
     command: celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     env_file: .env
     depends_on:
-      - redis
-      - postgres
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
 
   redis:
     image: redis:alpine
     restart: unless-stopped
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   postgres:
     image: postgres:16
@@ -62,12 +77,22 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-staxread}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-staxread}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   qdrant:
     image: qdrant/qdrant
     restart: unless-stopped
     volumes:
       - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:6333/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   minio:
     image: minio/minio
