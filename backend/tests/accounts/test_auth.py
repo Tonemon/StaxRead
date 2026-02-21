@@ -111,6 +111,27 @@ class TestLogout:
 
 
 @pytest.mark.django_db
+class TestMeEndpoint:
+    def test_me_returns_user_info(self, api_client, user):
+        api_client.force_authenticate(user=user)
+        response = api_client.get(reverse("me"))
+        assert response.status_code == 200
+        assert response.data["username"] == "testuser"
+        assert response.data["is_superuser"] is False
+        assert "id" in response.data
+
+    def test_me_unauthenticated_rejected(self, api_client):
+        response = api_client.get(reverse("me"))
+        assert response.status_code == 401
+
+    def test_me_superuser_flag(self, api_client, superuser):
+        api_client.force_authenticate(user=superuser)
+        response = api_client.get(reverse("me"))
+        assert response.status_code == 200
+        assert response.data["is_superuser"] is True
+
+
+@pytest.mark.django_db
 class TestUserModel:
     def test_user_has_uuid_primary_key(self, user):
         import uuid

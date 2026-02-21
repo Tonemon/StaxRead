@@ -22,3 +22,9 @@ DATABASES = {
         "NAME": ":memory:",
     }
 }
+
+# Use in-memory broker for tests (no running Redis needed)
+CELERY_BROKER_URL = "memory://"
+CELERY_RESULT_BACKEND = "cache+memory://"
+CELERY_TASK_ALWAYS_EAGER = True
+CELERY_TASK_EAGER_PROPAGATES_EXCEPTIONS = False
