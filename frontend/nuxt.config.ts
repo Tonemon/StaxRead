@@ -1,18 +1,17 @@
 export default defineNuxtConfig({
-  srcDir: "app",
-  css: ["~/assets/css/main.css"],
   modules: [
-    "@nuxt/ui",
-    "@pinia/nuxt",
-    "@pinia-plugin-persistedstate/nuxt",
-    "@vueuse/nuxt",
+    '@nuxt/ui',
+    '@pinia/nuxt',
+    '@vueuse/nuxt',
   ],
+  css: ['~/assets/css/main.css'],
+  ssr: false,
+  devtools: { enabled: true },
+  devServer: { host: '0.0.0.0' },
+  compatibilityDate: '2024-07-11',
   runtimeConfig: {
     public: {
-      apiBase: process.env.NUXT_PUBLIC_API_BASE || "http://localhost/api",
+      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://localhost/api',
     },
   },
-  ssr: true,
-  devtools: { enabled: true },
-  devServer: { host: "0.0.0.0" },
 })

@@ -1,17 +1,17 @@
 <script setup lang="ts">
 definePageMeta({ layout: false })
 const { login } = useAuth()
-const form = reactive({ username: "", password: "" })
-const error = ref("")
+const form = reactive({ username: '', password: '' })
+const error = ref('')
 const loading = ref(false)
 
 async function submit() {
-  error.value = ""
+  error.value = ''
   loading.value = true
   try {
     await login(form.username, form.password)
   } catch {
-    error.value = "Invalid credentials"
+    error.value = 'Invalid credentials'
   } finally {
     loading.value = false
   }
@@ -19,20 +19,23 @@ async function submit() {
 </script>
 
 <template>
-  <div class="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-950">
+  <div class="flex min-h-screen items-center justify-center bg-neutral-50 dark:bg-neutral-950">
     <UCard class="w-full max-w-sm">
       <template #header>
-        <h1 class="text-xl font-bold text-center text-gray-900 dark:text-white">StaxRead</h1>
+        <div class="flex items-center gap-2 justify-center">
+          <Logo class="h-8 w-auto" />
+          <span class="text-xl font-bold text-highlighted">StaxRead</span>
+        </div>
       </template>
       <form @submit.prevent="submit" class="space-y-4">
         <UFormField label="Username">
-          <UInput v-model="form.username" autocomplete="username" :disabled="loading" />
+          <UInput v-model="form.username" autocomplete="username" :disabled="loading" class="w-full" />
         </UFormField>
         <UFormField label="Password">
-          <UInput v-model="form.password" type="password" autocomplete="current-password" :disabled="loading" />
+          <UInput v-model="form.password" type="password" autocomplete="current-password" :disabled="loading" class="w-full" />
         </UFormField>
         <UAlert v-if="error" color="error" :description="error" />
-        <UButton type="submit" block :loading="loading">Sign in</UButton>
+        <UButton type="submit" block :loading="loading" color="neutral">Sign in</UButton>
       </form>
     </UCard>
   </div>

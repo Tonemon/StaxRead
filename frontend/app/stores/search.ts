@@ -1,4 +1,4 @@
-import { defineStore } from "pinia"
+import { defineStore } from 'pinia'
 
 export interface SearchResult {
   chunk_id: string
@@ -11,10 +11,10 @@ export interface SearchResult {
   metadata: Record<string, unknown>
 }
 
-export const useSearchStore = defineStore("search", {
-  state: () => ({
-    activeKbIds: [] as string[],
-    lastQuery: "",
-    results: [] as SearchResult[],
-  }),
+export const useSearchStore = defineStore('search', () => {
+  const activeKbIds = ref<string[]>([])
+  const lastQuery = ref('')
+  const results = ref<SearchResult[]>([])
+
+  return { activeKbIds, results, lastQuery }
 })

@@ -1,4 +1,4 @@
-import { defineStore } from "pinia"
+import { defineStore } from 'pinia'
 
 interface UserInfo {
   id: string
@@ -7,26 +7,25 @@ interface UserInfo {
   is_superuser: boolean
 }
 
-export const useAuthStore = defineStore("auth", {
-  state: () => ({
-    accessToken: null as string | null,
-    user: null as UserInfo | null,
-  }),
-  getters: {
-    isAuthenticated: (state) => !!state.accessToken,
-    isSuperuser: (state) => state.user?.is_superuser ?? false,
-  },
-  actions: {
-    setTokens(access: string) {
-      this.accessToken = access
-    },
-    setUser(user: UserInfo) {
-      this.user = user
-    },
-    clear() {
-      this.accessToken = null
-      this.user = null
-    },
-  },
-  persist: true,
+export const useAuthStore = defineStore('auth', () => {
+  const accessToken = useLocalStorage<string | null>('staxread_token', null)
+  const user = useLocalStorage<UserInfo | null>('staxread_user', null)
+
+  const isAuthenticated = computed(() => !!accessToken.value)
+  const isSuperuser = computed(() => user.value?.is_superuser ?? false)
+
+  function setTokens(access: string) {
+    accessToken.value = access
+  }
+
+  function setUser(u: UserInfo) {
+    user.value = u
+  }
+
+  function clear() {
+    accessToken.value = null
+    user.value = null
+  }
+
+  return { accessToken, user, isAuthenticated, isSuperuser, setTokens, setUser, clear }
 })

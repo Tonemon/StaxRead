@@ -14,7 +14,5 @@ export default defineNuxtPlugin(() => {
     },
   })
 
-  return {
-    provide: { api },
-  }
+  return { provide: { api } }
 })

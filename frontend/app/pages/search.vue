@@ -1,29 +1,27 @@
 <script setup lang="ts">
-definePageMeta({ middleware: "auth" })
+definePageMeta({ middleware: 'auth' })
 const route = useRoute()
+const router = useRouter()
 const store = useSearchStore()
 const { $api } = useNuxtApp()
 
-const query = ref((route.query.q as string) || "")
+const query = ref((route.query.q as string) || '')
 const loading = ref(false)
-const error = ref("")
+const error = ref('')
 
 async function runSearch() {
   if (!query.value.trim()) return
   loading.value = true
-  error.value = ""
+  error.value = ''
   try {
     const data = await ($api as typeof $fetch)<{ results: typeof store.results; query: string }>(
-      "/search/",
-      {
-        method: "POST",
-        body: { query: query.value, kb_ids: store.activeKbIds },
-      }
+      '/search/',
+      { method: 'POST', body: { query: query.value, kb_ids: store.activeKbIds } }
     )
     store.results = data.results
     store.lastQuery = query.value
   } catch {
-    error.value = "Search failed. Please try again."
+    error.value = 'Search failed. Please try again.'
   } finally {
     loading.value = false
   }
@@ -33,28 +31,40 @@ if (query.value) runSearch()
 </script>
 
 <template>
-  <div class="flex flex-col h-full">
-    <div class="border-b border-gray-200 dark:border-gray-800 p-4 bg-white dark:bg-gray-900">
-      <UInput
-        v-model="query"
-        size="lg"
-        placeholder="Search..."
-        icon="i-heroicons-magnifying-glass"
-        :loading="loading"
-        @keydown.enter="runSearch"
-      />
-    </div>
-    <div class="flex-1 overflow-y-auto p-4 space-y-3">
-      <UAlert v-if="error" color="error" :description="error" />
-      <p v-else-if="!store.results.length && !loading" class="text-gray-400 text-center mt-16">
-        No results yet. Enter a query above.
-      </p>
-      <ResultCard
-        v-for="result in store.results"
-        :key="result.chunk_id"
-        :result="result"
-        :query="store.lastQuery"
-      />
-    </div>
-  </div>
+  <UDashboardPanel id="search" class="min-h-0" :ui="{ body: 'p-0 sm:p-0' }">
+    <template #header>
+      <DashboardNavbar />
+    </template>
+    <template #body>
+      <UContainer class="flex-1 flex flex-col gap-4 sm:gap-6 py-6">
+        <UChatPrompt
+          v-model="query"
+          :status="loading ? 'streaming' : 'ready'"
+          variant="subtle"
+          placeholder="Search..."
+          :ui="{ base: 'px-1.5' }"
+          @submit="runSearch"
+        >
+          <template #footer>
+            <UChatPromptSubmit color="neutral" size="sm" icon="i-lucide-search" :disabled="loading" />
+          </template>
+        </UChatPrompt>
+
+        <UAlert v-if="error" color="error" :description="error" />
+
+        <p v-if="!store.results.length && !loading && !error" class="text-dimmed text-center mt-8">
+          No results yet. Enter a query above.
+        </p>
+
+        <div class="space-y-3">
+          <ResultCard
+            v-for="result in store.results"
+            :key="result.chunk_id"
+            :result="result"
+            :query="store.lastQuery"
+          />
+        </div>
+      </UContainer>
+    </template>
+  </UDashboardPanel>
 </template>
