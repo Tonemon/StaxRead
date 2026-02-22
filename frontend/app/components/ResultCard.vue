@@ -7,12 +7,14 @@ const props = defineProps<{
 }>()
 
 const highlightedText = computed(() => {
-  if (!props.query) return props.result.text
-  const escaped = props.query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  return props.result.text.replace(
-    new RegExp(`(${escaped})`, 'gi'),
-    '<mark class="bg-yellow-200 dark:bg-yellow-800 rounded px-0.5">$1</mark>'
-  )
+  const text = props.result.text
+  if (!props.query) return text
+  const words = props.query.trim().split(/\s+/)
+    .map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .filter(w => w.length >= 2)
+  if (!words.length) return text
+  const pattern = new RegExp(`(${words.join('|')})`, 'gi')
+  return text.replace(pattern, '<mark class="bg-yellow-200 dark:bg-yellow-800 rounded px-0.5">$1</mark>')
 })
 
 const scorePercent = computed(() => Math.round(props.result.relevance_score * 100))
@@ -33,6 +35,7 @@ const scorePercent = computed(() => Math.round(props.result.relevance_score * 10
         </div>
         <div class="shrink-0 flex items-center gap-2">
           <UBadge color="success" variant="subtle" size="xs">{{ scorePercent }}% relevance</UBadge>
+          <BookmarkButton :chunk-id="result.chunk_id" />
         </div>
       </div>
     </template>

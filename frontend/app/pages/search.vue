@@ -36,35 +36,38 @@ if (query.value) runSearch()
       <DashboardNavbar />
     </template>
     <template #body>
-      <UContainer class="flex-1 flex flex-col gap-4 sm:gap-6 py-6">
-        <UChatPrompt
-          v-model="query"
-          :status="loading ? 'streaming' : 'ready'"
-          variant="subtle"
-          placeholder="Search..."
-          :ui="{ base: 'px-1.5' }"
-          @submit="runSearch"
-        >
-          <template #footer>
-            <UChatPromptSubmit color="neutral" size="sm" icon="i-lucide-search" :disabled="loading" />
-          </template>
-        </UChatPrompt>
+      <div class="flex flex-1">
+        <UContainer class="flex-1 flex flex-col gap-4 sm:gap-6 py-6">
+          <UChatPrompt
+            v-model="query"
+            :status="loading ? 'streaming' : 'ready'"
+            variant="subtle"
+            placeholder="Search..."
+            :ui="{ base: 'px-1.5' }"
+            @submit="runSearch"
+          >
+            <template #footer>
+              <div />
+              <UChatPromptSubmit color="neutral" size="sm" :disabled="loading" />
+            </template>
+          </UChatPrompt>
 
-        <UAlert v-if="error" color="error" :description="error" />
+          <UAlert v-if="error" color="error" :description="error" />
 
-        <p v-if="!store.results.length && !loading && !error" class="text-dimmed text-center mt-8">
-          No results yet. Enter a query above.
-        </p>
+          <p v-if="!store.results.length && !loading && !error" class="text-dimmed text-center mt-8">
+            No results yet. Enter a query above.
+          </p>
 
-        <div class="space-y-3">
-          <ResultCard
-            v-for="result in store.results"
-            :key="result.chunk_id"
-            :result="result"
-            :query="store.lastQuery"
-          />
-        </div>
-      </UContainer>
+          <div class="space-y-3">
+            <ResultCard
+              v-for="result in store.results"
+              :key="result.chunk_id"
+              :result="result"
+              :query="store.lastQuery"
+            />
+          </div>
+        </UContainer>
+      </div>
     </template>
   </UDashboardPanel>
 </template>

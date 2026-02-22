@@ -12,7 +12,7 @@ export interface SearchResult {
 }
 
 export const useSearchStore = defineStore('search', () => {
-  const activeKbIds = ref<string[]>([])
+  const activeKbIds = useLocalStorage<string[]>('staxread_active_kb_ids', [])
   const lastQuery = ref('')
   const results = ref<SearchResult[]>([])
 

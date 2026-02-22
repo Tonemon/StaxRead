@@ -95,4 +95,3 @@ See `.env.example` for the full list. Key variables:
 | `MINIO_ENDPOINT` | MinIO host:port |
 | `MINIO_ACCESS_KEY` | MinIO access key |
 | `MINIO_SECRET_KEY` | MinIO secret key |
-| `NUXT_PUBLIC_API_BASE` | API base URL seen by the browser |

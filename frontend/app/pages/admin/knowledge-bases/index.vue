@@ -20,9 +20,21 @@ async function createKB() {
   refresh()
 }
 
-async function deleteKB(id: string) {
-  await ($api as typeof $fetch)(`/knowledge-bases/${id}/`, { method: 'DELETE' })
+const deleteTargetId = ref<string | null>(null)
+
+function confirmDelete(id: string) {
+  deleteTargetId.value = id
+}
+
+async function doDelete() {
+  if (!deleteTargetId.value) return
+  await ($api as typeof $fetch)(`/knowledge-bases/${deleteTargetId.value}/`, { method: 'DELETE' })
+  deleteTargetId.value = null
   refresh()
+}
+
+function onDeleteModalUpdate(open: boolean) {
+  if (!open) deleteTargetId.value = null
 }
 </script>
 
@@ -51,6 +63,16 @@ async function deleteKB(id: string) {
           </template>
         </UModal>
 
+        <UModal :open="!!deleteTargetId" title="Delete Knowledge Base" @update:open="onDeleteModalUpdate">
+          <template #body>
+            <p class="text-sm text-muted">Are you sure you want to delete this knowledge base? This action cannot be undone.</p>
+          </template>
+          <template #footer>
+            <UButton color="error" @click="doDelete">Delete</UButton>
+            <UButton color="neutral" variant="ghost" @click="deleteTargetId = null">Cancel</UButton>
+          </template>
+        </UModal>
+
         <div class="space-y-2">
           <div v-for="kb in kbs" :key="kb.id" class="flex items-center justify-between p-4 bg-default rounded-lg ring ring-default">
             <div>
@@ -58,7 +80,7 @@ async function deleteKB(id: string) {
               <p class="text-xs text-dimmed mt-0.5">Owner: {{ kb.owner_username }}</p>
               <p v-if="kb.description" class="text-sm text-muted mt-1">{{ kb.description }}</p>
             </div>
-            <UButton size="xs" variant="ghost" color="error" icon="i-lucide-trash" @click="deleteKB(kb.id)" />
+            <UButton size="xs" variant="ghost" color="error" icon="i-lucide-trash" @click="confirmDelete(kb.id)" />
           </div>
           <p v-if="!kbs?.length" class="text-dimmed text-center mt-8">No knowledge bases yet.</p>
         </div>
