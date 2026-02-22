@@ -32,6 +32,10 @@ async function doDelete() {
   deleteTargetId.value = null
   refresh()
 }
+
+function onDeleteModalUpdate(open: boolean) {
+  if (!open) deleteTargetId.value = null
+}
 </script>
 
 <template>
@@ -59,7 +63,7 @@ async function doDelete() {
           </template>
         </UModal>
 
-        <UModal :open="!!deleteTargetId" title="Delete Knowledge Base" @update:open="if (!$event) deleteTargetId = null">
+        <UModal :open="!!deleteTargetId" title="Delete Knowledge Base" @update:open="onDeleteModalUpdate">
           <template #body>
             <p class="text-sm text-muted">Are you sure you want to delete this knowledge base? This action cannot be undone.</p>
           </template>
