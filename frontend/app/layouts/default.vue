@@ -27,7 +27,7 @@ function toggleKb(id: string, val: boolean) {
 const navItems = computed(() => [
   { label: 'Search', to: '/', icon: 'i-lucide-search' },
   { label: 'Bookmarks', to: '/bookmarks', icon: 'i-lucide-bookmark' },
-  ...(authStore.isSuperuser ? [{ label: 'Admin', to: '/admin', icon: 'i-lucide-settings' }] : []),
+  ...(authStore.isSuperuser ? [{ label: 'Admin', to: '/admin/knowledge-bases', icon: 'i-lucide-settings' }] : []),
 ])
 
 const kbItems = computed(() =>

@@ -14,6 +14,46 @@ const { data: sources, refresh: refreshSources } = await useFetch<Source[]>('/so
   default: () => [] as Source[],
 })
 
+// ── Inline editing ──────────────────────────────────────────────────────────
+const editingName = ref(false)
+const editingDescription = ref(false)
+const editNameValue = ref('')
+const editDescValue = ref('')
+
+function startEditName() {
+  editNameValue.value = kb.value?.name || ''
+  editingName.value = true
+}
+
+function startEditDescription() {
+  editDescValue.value = kb.value?.description || ''
+  editingDescription.value = true
+}
+
+async function saveName() {
+  if (!editingName.value) return
+  editingName.value = false
+  if (editNameValue.value === kb.value?.name || !editNameValue.value) return
+  await ($api as typeof $fetch)(`/knowledge-bases/${kbId}/`, { method: 'PATCH', body: { name: editNameValue.value } })
+  if (kb.value) kb.value.name = editNameValue.value
+}
+
+async function saveDescription() {
+  if (!editingDescription.value) return
+  editingDescription.value = false
+  if (editDescValue.value === kb.value?.description) return
+  await ($api as typeof $fetch)(`/knowledge-bases/${kbId}/`, { method: 'PATCH', body: { description: editDescValue.value } })
+  if (kb.value) kb.value.description = editDescValue.value
+}
+
+function cancelEditName() {
+  editingName.value = false
+}
+
+function cancelEditDescription() {
+  editingDescription.value = false
+}
+
 // ── Sources section ────────────────────────────────────────────────────────
 const sourceTabs = [
   { label: 'PDF', value: 'pdf' },
@@ -89,8 +129,52 @@ async function share() {
           <!-- Header -->
           <div>
             <NuxtLink to="/admin/knowledge-bases" class="text-sm text-dimmed hover:text-default">&larr; Knowledge Bases</NuxtLink>
-            <h1 class="text-2xl font-bold text-highlighted mt-2">{{ kb?.name }}</h1>
-            <p v-if="kb?.description" class="text-sm text-muted mt-1">{{ kb.description }}</p>
+
+            <!-- Editable name -->
+            <div class="mt-2">
+              <template v-if="editingName">
+                <UInput
+                  v-model="editNameValue"
+                  autofocus
+                  size="lg"
+                  class="text-2xl font-bold w-full"
+                  @blur="saveName"
+                  @keydown.enter="saveName"
+                  @keydown.escape="cancelEditName"
+                />
+              </template>
+              <h1
+                v-else
+                class="text-2xl font-bold text-highlighted cursor-pointer hover:text-primary transition-colors"
+                title="Click to edit"
+                @click="startEditName"
+              >
+                {{ kb?.name }}
+              </h1>
+            </div>
+
+            <!-- Editable description -->
+            <div class="mt-1">
+              <template v-if="editingDescription">
+                <UTextarea
+                  v-model="editDescValue"
+                  autofocus
+                  :rows="2"
+                  class="w-full text-sm"
+                  @blur="saveDescription"
+                  @keydown.escape="cancelEditDescription"
+                />
+              </template>
+              <p
+                v-else
+                class="text-sm cursor-pointer hover:text-default transition-colors"
+                :class="kb?.description ? 'text-muted' : 'text-dimmed italic'"
+                title="Click to edit"
+                @click="startEditDescription"
+              >
+                {{ kb?.description || 'Add a description...' }}
+              </p>
+            </div>
           </div>
 
           <!-- Sources -->

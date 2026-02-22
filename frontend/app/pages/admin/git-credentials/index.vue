@@ -26,8 +26,16 @@ async function createCredential() {
   }
 }
 
-async function deleteCredential(id: string) {
-  await ($api as typeof $fetch)(`/git-credentials/${id}/`, { method: 'DELETE' })
+const deleteTargetId = ref<string | null>(null)
+
+function confirmDelete(id: string) {
+  deleteTargetId.value = id
+}
+
+async function doDelete() {
+  if (!deleteTargetId.value) return
+  await ($api as typeof $fetch)(`/git-credentials/${deleteTargetId.value}/`, { method: 'DELETE' })
+  deleteTargetId.value = null
   refresh()
 }
 </script>
@@ -57,13 +65,23 @@ async function deleteCredential(id: string) {
           </template>
         </UModal>
 
+        <UModal :open="!!deleteTargetId" title="Delete Git Credential" @update:open="if (!$event) deleteTargetId = null">
+          <template #body>
+            <p class="text-sm text-muted">Are you sure you want to delete this credential? This action cannot be undone.</p>
+          </template>
+          <template #footer>
+            <UButton color="error" @click="doDelete">Delete</UButton>
+            <UButton color="neutral" variant="ghost" @click="deleteTargetId = null">Cancel</UButton>
+          </template>
+        </UModal>
+
         <div class="space-y-2">
           <div v-for="cred in credentials" :key="cred.id" class="flex items-center justify-between p-4 bg-default rounded-lg ring ring-default">
             <div>
               <p class="font-medium text-sm text-highlighted">{{ cred.label }}</p>
               <p class="text-xs text-dimmed mt-0.5 font-mono">••••••••••••••••</p>
             </div>
-            <UButton size="xs" variant="ghost" color="error" icon="i-lucide-trash" @click="deleteCredential(cred.id)" />
+            <UButton size="xs" variant="ghost" color="error" icon="i-lucide-trash" @click="confirmDelete(cred.id)" />
           </div>
           <p v-if="!credentials?.length" class="text-dimmed text-center mt-8">No credentials yet.</p>
         </div>
