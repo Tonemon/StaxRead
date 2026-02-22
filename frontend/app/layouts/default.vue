@@ -16,12 +16,12 @@ const { data: kbs } = await useFetch<KB[]>('/knowledge-bases/', {
   default: () => [] as KB[],
 })
 
-const toggledKbs = ref<Record<string, boolean>>({})
-
-function updateActiveKbs() {
-  searchStore.activeKbIds = Object.entries(toggledKbs.value)
-    .filter(([, v]) => v)
-    .map(([k]) => k)
+function toggleKb(id: string, val: boolean) {
+  if (val && !searchStore.activeKbIds.includes(id)) {
+    searchStore.activeKbIds = [...searchStore.activeKbIds, id]
+  } else if (!val) {
+    searchStore.activeKbIds = searchStore.activeKbIds.filter(k => k !== id)
+  }
 }
 
 const navItems = computed(() => [
@@ -75,9 +75,9 @@ const kbItems = computed(() =>
           >
             <template #kb-leading="{ item }">
               <USwitch
-                :model-value="toggledKbs[(item as any).id]"
+                :model-value="searchStore.activeKbIds.includes((item as any).id)"
                 size="xs"
-                @update:model-value="val => { toggledKbs[(item as any).id] = val; updateActiveKbs() }"
+                @update:model-value="(val: boolean) => toggleKb((item as any).id, val)"
                 @click.stop.prevent
               />
             </template>
