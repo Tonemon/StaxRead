@@ -45,14 +45,8 @@ services:
       - model_cache:/app/model_cache
       - git_repos:/app/git_repos
     depends_on:
-      postgres:
+      django:
         condition: service_healthy
-      redis:
-        condition: service_healthy
-      qdrant:
-        condition: service_started
-      minio:
-        condition: service_started
 
   celery-beat:
     build: ./backend
@@ -60,9 +54,7 @@ services:
     command: celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     env_file: .env
     depends_on:
-      redis:
-        condition: service_healthy
-      postgres:
+      django:
         condition: service_healthy
 
   redis:
