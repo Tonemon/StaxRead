@@ -2,6 +2,7 @@
 const route = useRoute()
 const router = useRouter()
 const isAdmin = computed(() => route.path.startsWith('/admin'))
+const isDocument = computed(() => route.path.startsWith('/documents/'))
 </script>
 
 <template>
@@ -10,7 +11,7 @@ const isAdmin = computed(() => route.path.startsWith('/admin'))
     :ui="{ left: 'pointer-events-auto', right: 'pointer-events-auto' }"
   >
     <template #left>
-      <UDashboardSidebarCollapse />
+      <UDashboardSidebarCollapse v-if="!isDocument" />
       <UButton
         v-if="isAdmin"
         color="neutral"
@@ -23,7 +24,7 @@ const isAdmin = computed(() => route.path.startsWith('/admin'))
       </UButton>
     </template>
     <template #right>
-      <UColorModeButton />
+      <UColorModeButton v-if="!isDocument" />
       <UButton
         color="neutral"
         variant="ghost"

@@ -35,6 +35,7 @@ const scorePercent = computed(() => Math.round(props.result.relevance_score * 10
         </div>
         <div class="shrink-0 flex items-center gap-2">
           <UBadge color="success" variant="subtle" size="xs">{{ scorePercent }}% relevance</UBadge>
+          <BookmarkButton :chunk-id="result.chunk_id" />
         </div>
       </div>
     </template>
