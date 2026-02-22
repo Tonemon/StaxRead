@@ -57,14 +57,19 @@ def get_presigned_url(source_id: uuid.UUID, extension: str, expires_hours: int =
     """
     Generate a presigned GET URL for the source document.
 
-    Returns:
-        URL string
+    The MinIO SDK signs the URL with the internal endpoint (e.g. minio:9000).
+    We rewrite the origin to /minio so the browser hits nginx, which proxies
+    back to minio:9000 with Host: minio:9000 intact — keeping the AWS v4
+    signature valid regardless of the public hostname.
     """
     client = get_minio_client()
     ext = extension if extension.startswith(".") else f".{extension}"
     object_name = f"documents/{source_id}{ext}"
-    return client.presigned_get_object(
+    url = client.presigned_get_object(
         bucket_name=settings.MINIO_BUCKET,
         object_name=object_name,
         expires=timedelta(hours=expires_hours),
     )
+    scheme = "https" if settings.MINIO_USE_SSL else "http"
+    internal_origin = f"{scheme}://{settings.MINIO_ENDPOINT}"
+    return url.replace(internal_origin, "/minio", 1)
