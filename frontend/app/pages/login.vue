@@ -1,9 +1,11 @@
 <script setup lang="ts">
 definePageMeta({ layout: false })
 const { login } = useAuth()
+const route = useRoute()
 const form = reactive({ username: '', password: '' })
 const error = ref('')
 const loading = ref(false)
+const sessionExpired = computed(() => route.query.session_expired === '1')
 
 async function submit() {
   error.value = ''
@@ -34,6 +36,7 @@ async function submit() {
         <UFormField label="Password">
           <UInput v-model="form.password" type="password" autocomplete="current-password" :disabled="loading" class="w-full" />
         </UFormField>
+        <UAlert v-if="sessionExpired" color="warning" description="Session expired. Please login again." />
         <UAlert v-if="error" color="error" :description="error" />
         <UButton type="submit" block :loading="loading" color="neutral">Sign in</UButton>
       </form>
