@@ -17,15 +17,29 @@ const submitting = ref(false)
 const success = ref('')
 const error = ref('')
 
+function stemFromFilename(filename: string): string {
+  const dot = filename.lastIndexOf('.')
+  return dot > 0 ? filename.substring(0, dot) : filename
+}
+
+function onFileChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  fileForm.file = input.files?.[0] ?? null
+  if (fileForm.file && !fileForm.title.trim()) {
+    fileForm.title = stemFromFilename(fileForm.file.name)
+  }
+}
+
 async function submitFile() {
-  if (!fileForm.file || !fileForm.title) return
+  if (!fileForm.file) return
   submitting.value = true
   error.value = ''
   success.value = ''
   try {
+    const title = fileForm.title.trim() || stemFromFilename(fileForm.file.name)
     const fd = new FormData()
     fd.append('kb', kbId)
-    fd.append('title', fileForm.title)
+    fd.append('title', title)
     fd.append('source_type', fileForm.sourceType)
     fd.append('file', fileForm.file)
     await ($api as typeof $fetch)('/sources/', { method: 'POST', body: fd })
@@ -64,11 +78,6 @@ async function submitGit() {
   }
 }
 
-function onFileChange(e: Event) {
-  const input = e.target as HTMLInputElement
-  fileForm.file = input.files?.[0] ?? null
-}
-
 const credentialItems = computed(() => [
   { label: 'None (public repo)', value: '' },
   ...(credentials.value || []).map(c => ({ label: c.label, value: c.id })),
@@ -99,7 +108,7 @@ const tabs = [
           <UTabs :items="tabs">
             <template #file>
               <div class="space-y-4 pt-4">
-                <UFormField label="Title">
+                <UFormField label="Title (optional)" hint="Defaults to filename if left blank">
                   <UInput v-model="fileForm.title" placeholder="e.g. Annual Report 2024" class="w-full" />
                 </UFormField>
                 <UFormField label="Type">
@@ -113,7 +122,7 @@ const tabs = [
                     @change="onFileChange"
                   />
                 </UFormField>
-                <UButton :loading="submitting" :disabled="!fileForm.file || !fileForm.title" @click="submitFile">
+                <UButton :loading="submitting" :disabled="!fileForm.file" @click="submitFile">
                   Upload &amp; Ingest
                 </UButton>
               </div>

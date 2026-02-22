@@ -74,7 +74,11 @@ class SourceViewSet(ModelViewSet):
         accessible_kb_ids = KnowledgeBase.objects.filter(
             access_entries__user=self.request.user
         ).values_list("id", flat=True)
-        return Source.objects.filter(kb__in=accessible_kb_ids)
+        qs = Source.objects.filter(kb__in=accessible_kb_ids)
+        kb_id = self.request.query_params.get("kb")
+        if kb_id:
+            qs = qs.filter(kb=kb_id)
+        return qs
 
     def create(self, request, *args, **kwargs):
         source_type = request.data.get("source_type")
