@@ -62,7 +62,7 @@ class TestBookmarkCategory:
             format="json",
         )
         response = alice_client.get(reverse("bookmarkcategory-list"))
-        names = [c["name"] for c in response.data["results"]]
+        names = [c["name"] for c in response.data]
         assert "Alice's Category" in names
         assert "Bob's Category" not in names
 

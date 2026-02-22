@@ -48,7 +48,7 @@ class TestKnowledgeBaseAPI:
 
         response = alice_client.get(reverse("knowledgebase-list"))
         assert response.status_code == 200
-        names = [kb["name"] for kb in response.data["results"]]
+        names = [kb["name"] for kb in response.data]
         assert "Alice KB" in names
         assert "Bob KB" not in names
 
@@ -90,7 +90,7 @@ class TestKnowledgeBaseAPI:
         KBAccess.objects.create(kb=kb, user=bob)
 
         response = bob_client.get(reverse("knowledgebase-list"))
-        names = [kb["name"] for kb in response.data["results"]]
+        names = [kb["name"] for kb in response.data]
         assert "Shared to Bob" in names
 
     def test_non_owner_cannot_share_kb(self, alice_client, bob_client, alice, bob):

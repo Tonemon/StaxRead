@@ -61,7 +61,7 @@ class TestGitCredentialAPI:
         bob_cred.save()
 
         response = alice_client.get(reverse("gitcredential-list"))
-        labels = [c["label"] for c in response.data["results"]]
+        labels = [c["label"] for c in response.data]
         assert "Alice's Cred" in labels
         assert "Bob's Cred" not in labels
 
@@ -106,7 +106,7 @@ class TestSourceAPI:
         Source.objects.create(kb=bob_kb, title="Bob Doc", source_type=Source.SourceType.PDF)
 
         response = alice_client.get(reverse("source-list"))
-        titles = [s["title"] for s in response.data["results"]]
+        titles = [s["title"] for s in response.data]
         assert "Alice Doc" in titles
         assert "Bob Doc" not in titles
 
