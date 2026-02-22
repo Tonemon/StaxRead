@@ -1,5 +1,6 @@
 export default defineNuxtConfig({
   srcDir: "app",
+  css: ["~/assets/css/main.css"],
   modules: [
     "@nuxt/ui",
     "@pinia/nuxt",
