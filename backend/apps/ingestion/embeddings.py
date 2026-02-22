@@ -28,6 +28,12 @@ def _get_sparse_model():
     )
 
 
+def warmup() -> None:
+    """Pre-load both embedding models into memory."""
+    _get_dense_model()
+    _get_sparse_model()
+
+
 def embed_documents(texts: List[str]) -> Tuple[np.ndarray, list]:
     """
     Embed a batch of document texts.
