@@ -6,6 +6,10 @@ const { setup, teardown } = usePdfDrop()
 onMounted(setup)
 onUnmounted(teardown)
 
+const { setup: setupShortcuts, teardown: teardownShortcuts } = useKeyboardShortcuts()
+onMounted(setupShortcuts)
+onUnmounted(teardownShortcuts)
+
 useHead({
   meta: [
     { charset: 'utf-8' },
@@ -29,5 +33,6 @@ useSeoMeta({
     </NuxtLayout>
     <PdfDropOverlay />
     <PdfDropModal />
+    <KeyboardShortcutsModal />
   </UApp>
 </template>

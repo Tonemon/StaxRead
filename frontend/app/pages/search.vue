@@ -4,6 +4,7 @@ const route = useRoute()
 const router = useRouter()
 const store = useSearchStore()
 const { $api } = useNuxtApp()
+const { setRefresh, clearRefresh } = useKeyboardShortcuts()
 
 const query = ref((route.query.q as string) || '')
 const loading = ref(false)
@@ -28,6 +29,9 @@ async function runSearch() {
 }
 
 if (query.value) runSearch()
+
+onMounted(() => setRefresh(runSearch))
+onUnmounted(clearRefresh)
 </script>
 
 <template>

@@ -2,6 +2,7 @@
 definePageMeta({ middleware: 'admin', layout: 'admin' })
 const { $api } = useNuxtApp()
 const authStore = useAuthStore()
+const { setRefresh, clearRefresh } = useKeyboardShortcuts()
 
 interface KB { id: string; name: string; description: string; owner_username: string; created_at: string }
 interface Invitation { id: string; kb_id: string; kb_name: string; kb_description: string; owner_username: string }
@@ -63,6 +64,9 @@ async function doDelete() {
 function onDeleteModalUpdate(open: boolean) {
   if (!open) deleteTargetId.value = null
 }
+
+onMounted(() => setRefresh(() => { refresh(); refreshInvitations() }))
+onUnmounted(clearRefresh)
 </script>
 
 <template>

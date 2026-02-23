@@ -3,11 +3,12 @@ definePageMeta({ middleware: 'admin', layout: 'admin' })
 const route = useRoute()
 const { $api } = useNuxtApp()
 const kbId = route.params.id as string
+const { setRefresh, clearRefresh } = useKeyboardShortcuts()
 
 interface KB { id: string; name: string; description: string; owner_username: string }
 interface Source { id: string; title: string; source_type: string; status: string }
 
-const { data: kb } = await useFetch<KB>(`/knowledge-bases/${kbId}/`, { $fetch: $api as typeof $fetch })
+const { data: kb, refresh: refreshKb } = await useFetch<KB>(`/knowledge-bases/${kbId}/`, { $fetch: $api as typeof $fetch })
 const { data: sources, refresh: refreshSources } = await useFetch<Source[]>('/sources/', {
   $fetch: $api as typeof $fetch,
   query: { kb: kbId },
@@ -90,12 +91,14 @@ onMounted(() => {
   suppressGlobal.value = true
   dropLabel.value = `Drop to add to "${kb.value?.name ?? 'this Knowledge Base'}"`
   window.addEventListener('drop', onWindowDrop)
+  setRefresh(() => { refreshKb(); refreshSources() })
 })
 
 onUnmounted(() => {
   suppressGlobal.value = false
   dropLabel.value = null
   window.removeEventListener('drop', onWindowDrop)
+  clearRefresh()
 })
 
 // ── Sources section ────────────────────────────────────────────────────────

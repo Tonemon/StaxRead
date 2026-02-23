@@ -1,6 +1,7 @@
 <script setup lang="ts">
 definePageMeta({ middleware: 'auth' })
 const { $api } = useNuxtApp()
+const { setRefresh, clearRefresh } = useKeyboardShortcuts()
 
 interface Category { id: string; name: string }
 interface BookmarkItem { id: string; chunk: string; chunk_text: string; source_title: string; source_id: string; category: string | null; note: string; query: string; created_at: string }
@@ -41,6 +42,9 @@ async function deleteCategory(id: string) {
   refreshCategories()
   refreshBookmarks()
 }
+
+onMounted(() => setRefresh(() => { refreshCategories(); refreshBookmarks() }))
+onUnmounted(clearRefresh)
 </script>
 
 <template>

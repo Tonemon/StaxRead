@@ -1,6 +1,7 @@
 <script setup lang="ts">
 definePageMeta({ middleware: 'admin', layout: 'admin' })
 const { $api } = useNuxtApp()
+const { setRefresh, clearRefresh } = useKeyboardShortcuts()
 
 interface User { id: string; username: string; email: string; is_active: boolean; is_superuser: boolean; date_joined: string }
 
@@ -32,6 +33,9 @@ async function toggleActive(user: User) {
   await ($api as typeof $fetch)(`/auth/users/${user.id}/`, { method: 'PATCH', body: { is_active: !user.is_active } })
   refresh()
 }
+
+onMounted(() => setRefresh(refresh))
+onUnmounted(clearRefresh)
 </script>
 
 <template>

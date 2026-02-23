@@ -3,6 +3,7 @@ definePageMeta({ middleware: 'auth' })
 const router = useRouter()
 const store = useSearchStore()
 const { $api } = useNuxtApp()
+const { setRefresh, clearRefresh, focusSearchFlag } = useKeyboardShortcuts()
 
 const query = ref('')
 const loading = ref(false)
@@ -56,6 +57,31 @@ async function declineInvitation(id: string) {
   await ($api as typeof $fetch)(`/kb-invitations/${id}/decline/`, { method: 'POST' })
   refreshInvitations()
 }
+
+const searchAreaRef = ref<HTMLElement | null>(null)
+
+function focusSearch() {
+  nextTick(() => {
+    searchAreaRef.value?.querySelector('textarea')?.focus()
+  })
+}
+
+watch(focusSearchFlag, (v) => {
+  if (v) {
+    focusSearchFlag.value = false
+    focusSearch()
+  }
+})
+
+onMounted(() => {
+  setRefresh(() => { refreshBookmarks(); refreshInvitations() })
+  if (focusSearchFlag.value) {
+    focusSearchFlag.value = false
+    focusSearch()
+  }
+})
+
+onUnmounted(clearRefresh)
 </script>
 
 <template>
@@ -71,19 +97,21 @@ async function declineInvitation(id: string) {
             What are you looking for?
           </h1>
 
-          <UChatPrompt
-            v-model="query"
-            :status="loading ? 'streaming' : 'ready'"
-            variant="subtle"
-            placeholder="Search your knowledge bases..."
-            :ui="{ base: 'px-1.5' }"
-            @submit="search"
-          >
-            <template #footer>
-              <div />
-              <UChatPromptSubmit color="neutral" size="sm" :disabled="loading" />
-            </template>
-          </UChatPrompt>
+          <div ref="searchAreaRef">
+            <UChatPrompt
+              v-model="query"
+              :status="loading ? 'streaming' : 'ready'"
+              variant="subtle"
+              placeholder="Search your knowledge bases..."
+              :ui="{ base: 'px-1.5' }"
+              @submit="search"
+            >
+              <template #footer>
+                <div />
+                <UChatPromptSubmit color="neutral" size="sm" :disabled="loading" />
+              </template>
+            </UChatPrompt>
+          </div>
 
           <div v-if="invitations?.length" class="space-y-2">
             <p class="text-xs font-semibold text-dimmed uppercase tracking-wider">Pending Knowledge Base Invitations</p>

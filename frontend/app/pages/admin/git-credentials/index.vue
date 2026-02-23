@@ -1,6 +1,7 @@
 <script setup lang="ts">
 definePageMeta({ middleware: 'admin', layout: 'admin' })
 const { $api } = useNuxtApp()
+const { setRefresh, clearRefresh } = useKeyboardShortcuts()
 
 interface GitCredential { id: string; label: string; created_at: string }
 
@@ -42,6 +43,9 @@ async function doDelete() {
 function onDeleteModalUpdate(open: boolean) {
   if (!open) deleteTargetId.value = null
 }
+
+onMounted(() => setRefresh(refresh))
+onUnmounted(clearRefresh)
 </script>
 
 <template>
