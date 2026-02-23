@@ -2,6 +2,10 @@
 const colorMode = useColorMode()
 const color = computed(() => colorMode.value === 'dark' ? '#18181b' : 'white')
 
+const { setup, teardown } = usePdfDrop()
+onMounted(setup)
+onUnmounted(teardown)
+
 useHead({
   meta: [
     { charset: 'utf-8' },
@@ -23,5 +27,7 @@ useSeoMeta({
     <NuxtLayout>
       <NuxtPage />
     </NuxtLayout>
+    <PdfDropOverlay />
+    <PdfDropModal />
   </UApp>
 </template>

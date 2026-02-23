@@ -54,6 +54,50 @@ function cancelEditDescription() {
   editingDescription.value = false
 }
 
+// ── Drag-to-upload ──────────────────────────────────────────────────────────
+const { isDragging, suppressGlobal, dropLabel } = usePdfDrop()
+
+interface DropEntry { name: string; status: 'uploading' | 'done' | 'error' }
+const dropUploads = ref<DropEntry[]>([])
+
+function stemFromFilename(filename: string): string {
+  const dot = filename.lastIndexOf('.')
+  return dot > 0 ? filename.substring(0, dot) : filename
+}
+
+async function onWindowDrop(e: DragEvent) {
+  const files = Array.from(e.dataTransfer?.files ?? []).filter(f => f.type === 'application/pdf')
+  if (!files.length) return
+  for (const file of files) {
+    const entry = reactive<DropEntry>({ name: file.name, status: 'uploading' })
+    dropUploads.value.push(entry)
+    try {
+      const fd = new FormData()
+      fd.append('kb', kbId)
+      fd.append('title', stemFromFilename(file.name))
+      fd.append('source_type', 'pdf')
+      fd.append('file', file)
+      await ($api as typeof $fetch)('/sources/', { method: 'POST', body: fd })
+      entry.status = 'done'
+      refreshSources()
+    } catch {
+      entry.status = 'error'
+    }
+  }
+}
+
+onMounted(() => {
+  suppressGlobal.value = true
+  dropLabel.value = `Drop to add to "${kb.value?.name ?? 'this Knowledge Base'}"`
+  window.addEventListener('drop', onWindowDrop)
+})
+
+onUnmounted(() => {
+  suppressGlobal.value = false
+  dropLabel.value = null
+  window.removeEventListener('drop', onWindowDrop)
+})
+
 // ── Sources section ────────────────────────────────────────────────────────
 const sourceTabs = [
   { label: 'PDF', value: 'pdf' },
@@ -174,6 +218,22 @@ async function share() {
               >
                 {{ kb?.description || 'Add a description...' }}
               </p>
+            </div>
+          </div>
+
+          <!-- Drop upload status -->
+          <div v-if="dropUploads.length" class="space-y-1.5">
+            <div
+              v-for="(entry, i) in dropUploads"
+              :key="i"
+              class="flex items-center gap-2 text-sm px-3 py-2 rounded-lg bg-elevated"
+            >
+              <UIcon
+                :name="entry.status === 'uploading' ? 'i-lucide-loader-circle' : entry.status === 'done' ? 'i-lucide-circle-check' : 'i-lucide-circle-x'"
+                :class="['size-4 shrink-0', entry.status === 'uploading' ? 'text-primary animate-spin' : entry.status === 'done' ? 'text-success' : 'text-error']"
+              />
+              <span class="truncate text-default">{{ entry.name }}</span>
+              <span class="text-xs text-dimmed ml-auto shrink-0">{{ entry.status === 'uploading' ? 'Uploading…' : entry.status === 'done' ? 'Ingestion started' : 'Failed' }}</span>
             </div>
           </div>
 

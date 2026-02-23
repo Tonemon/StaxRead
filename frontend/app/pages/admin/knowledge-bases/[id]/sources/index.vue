@@ -5,13 +5,15 @@ const { $api } = useNuxtApp()
 const kbId = route.params.id as string
 
 interface GitCredential { id: string; label: string }
+interface FileEntry { file: File; title: string; status: 'pending' | 'uploading' | 'done' | 'error' }
 
 const { data: credentials } = await useFetch<GitCredential[]>('/git-credentials/', {
   $fetch: $api as typeof $fetch,
   default: () => [] as GitCredential[],
 })
 
-const fileForm = reactive({ title: '', sourceType: 'pdf', file: null as File | null })
+const fileQueue = ref<FileEntry[]>([])
+const fileInputRef = ref<HTMLInputElement | null>(null)
 const gitForm = reactive({ title: '', gitUrl: '', gitBranch: 'main', gitCredential: '' })
 const submitting = ref(false)
 const success = ref('')
@@ -24,33 +26,56 @@ function stemFromFilename(filename: string): string {
 
 function onFileChange(e: Event) {
   const input = e.target as HTMLInputElement
-  fileForm.file = input.files?.[0] ?? null
-  if (fileForm.file && !fileForm.title.trim()) {
-    fileForm.title = stemFromFilename(fileForm.file.name)
-  }
+  const files = Array.from(input.files ?? []).filter(f => f.type === 'application/pdf')
+  fileQueue.value = files.map(f => ({
+    file: f,
+    title: stemFromFilename(f.name),
+    status: 'pending',
+  }))
 }
 
-async function submitFile() {
-  if (!fileForm.file) return
+const allSettled = computed(() =>
+  fileQueue.value.length > 0 && fileQueue.value.every(e => e.status === 'done' || e.status === 'error'),
+)
+
+const anyPending = computed(() => fileQueue.value.some(e => e.status === 'pending'))
+
+async function submitFiles() {
+  if (!fileQueue.value.length) return
   submitting.value = true
   error.value = ''
   success.value = ''
-  try {
-    const title = fileForm.title.trim() || stemFromFilename(fileForm.file.name)
-    const fd = new FormData()
-    fd.append('kb', kbId)
-    fd.append('title', title)
-    fd.append('source_type', fileForm.sourceType)
-    fd.append('file', fileForm.file)
-    await ($api as typeof $fetch)('/sources/', { method: 'POST', body: fd })
-    success.value = 'Source added. Ingestion started.'
-    fileForm.title = ''
-    fileForm.file = null
-  } catch {
-    error.value = 'Failed to add source.'
-  } finally {
-    submitting.value = false
+
+  for (const entry of fileQueue.value) {
+    if (entry.status !== 'pending') continue
+    entry.status = 'uploading'
+    try {
+      const fd = new FormData()
+      fd.append('kb', kbId)
+      fd.append('title', entry.title || stemFromFilename(entry.file.name))
+      fd.append('source_type', 'pdf')
+      fd.append('file', entry.file)
+      await ($api as typeof $fetch)('/sources/', { method: 'POST', body: fd })
+      entry.status = 'done'
+    } catch {
+      entry.status = 'error'
+    }
   }
+
+  submitting.value = false
+  if (fileQueue.value.every(e => e.status === 'done')) {
+    success.value = `${fileQueue.value.length} file${fileQueue.value.length > 1 ? 's' : ''} uploaded. Ingestion started.`
+  }
+}
+
+function removeEntry(i: number) {
+  fileQueue.value.splice(i, 1)
+}
+
+function clearQueue() {
+  fileQueue.value = []
+  if (fileInputRef.value) fileInputRef.value.value = ''
+  success.value = ''
 }
 
 async function submitGit() {
@@ -84,9 +109,23 @@ const credentialItems = computed(() => [
 ])
 
 const tabs = [
-  { label: 'Upload File', slot: 'file' as const },
+  { label: 'Upload PDF', slot: 'file' as const },
   { label: 'Git Repository', slot: 'git' as const },
 ]
+
+const statusIcon: Record<string, string> = {
+  pending: 'i-lucide-file',
+  uploading: 'i-lucide-loader-circle',
+  done: 'i-lucide-circle-check',
+  error: 'i-lucide-circle-x',
+}
+
+const statusColor: Record<string, string> = {
+  pending: 'text-dimmed',
+  uploading: 'text-primary animate-spin',
+  done: 'text-success',
+  error: 'text-error',
+}
 </script>
 
 <template>
@@ -108,23 +147,62 @@ const tabs = [
           <UTabs :items="tabs">
             <template #file>
               <div class="space-y-4 pt-4">
-                <UFormField label="Title (optional)" hint="Defaults to filename if left blank">
-                  <UInput v-model="fileForm.title" placeholder="e.g. Annual Report 2024" class="w-full" />
-                </UFormField>
-                <UFormField label="Type">
-                  <USelectMenu v-model="fileForm.sourceType" :items="['pdf', 'epub']" class="w-full" />
-                </UFormField>
-                <UFormField label="File">
+                <UFormField label="Files" hint="Select one or more PDFs">
                   <input
+                    ref="fileInputRef"
                     type="file"
-                    :accept="fileForm.sourceType === 'pdf' ? '.pdf' : '.epub'"
+                    accept=".pdf"
+                    multiple
                     class="text-sm text-default file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:bg-elevated file:text-default hover:file:bg-accented cursor-pointer"
                     @change="onFileChange"
                   />
                 </UFormField>
-                <UButton :loading="submitting" :disabled="!fileForm.file" @click="submitFile">
-                  Upload &amp; Ingest
-                </UButton>
+
+                <div v-if="fileQueue.length" class="space-y-2">
+                  <div
+                    v-for="(entry, i) in fileQueue"
+                    :key="i"
+                    class="flex items-center gap-3 p-2.5 rounded-lg bg-elevated"
+                  >
+                    <UIcon
+                      :name="statusIcon[entry.status]"
+                      :class="['size-4 shrink-0', statusColor[entry.status]]"
+                    />
+                    <UInput
+                      v-model="fileQueue[i].title"
+                      size="sm"
+                      class="flex-1 min-w-0"
+                      :disabled="entry.status !== 'pending'"
+                      placeholder="Title"
+                    />
+                    <UButton
+                      v-if="entry.status === 'pending'"
+                      icon="i-lucide-x"
+                      size="xs"
+                      color="neutral"
+                      variant="ghost"
+                      @click="removeEntry(i)"
+                    />
+                  </div>
+                </div>
+
+                <div class="flex gap-2">
+                  <UButton
+                    :loading="submitting"
+                    :disabled="!anyPending || submitting"
+                    @click="submitFiles"
+                  >
+                    Upload {{ fileQueue.length > 1 ? `${fileQueue.length} files` : 'file' }}
+                  </UButton>
+                  <UButton
+                    v-if="allSettled"
+                    color="neutral"
+                    variant="outline"
+                    @click="clearQueue"
+                  >
+                    Clear
+                  </UButton>
+                </div>
               </div>
             </template>
 
