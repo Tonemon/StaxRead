@@ -1,3 +1,5 @@
+from rest_framework import status
+from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from apps.bookmarks.models import Bookmark, BookmarkCategory
@@ -24,5 +26,20 @@ class BookmarkViewSet(ModelViewSet):
             qs = qs.filter(category_id=category_id)
         return qs
 
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        validated = serializer.validated_data
+
+        obj, created = Bookmark.objects.update_or_create(
+            user=request.user,
+            chunk=validated["chunk"],
+            defaults={
+                "category": validated.get("category"),
+                "note": validated.get("note", ""),
+                "query": validated.get("query", ""),
+            },
+        )
+        out = self.get_serializer(obj)
+        code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+        return Response(out.data, status=code)

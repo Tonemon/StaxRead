@@ -1,37 +1,48 @@
 <script setup lang="ts">
 const props = defineProps<{ chunkId: string }>()
 const { $api } = useNuxtApp()
+const searchStore = useSearchStore()
 const isOpen = ref(false)
 const note = ref("")
 const selectedCategory = ref("")
+const saveError = ref("")
 
-interface Category {
-  id: string
-  name: string
+interface Category { id: string; name: string }
+
+const categories = ref<Category[]>([])
+const categoriesLoaded = ref(false)
+
+async function loadCategories() {
+  if (categoriesLoaded.value) return
+  categories.value = await ($api as typeof $fetch)<Category[]>("/bookmark-categories/")
+  categoriesLoaded.value = true
 }
 
-const { data: categories } = await useFetch<Category[]>("/bookmark-categories/", {
-  $fetch: $api as typeof $fetch,
-  default: () => [] as Category[],
-})
+watch(isOpen, (val) => { if (val) loadCategories() })
 
 const categoryItems = computed(() => [
   { label: "No category", value: "" },
-  ...(categories.value || []).map(c => ({ label: c.name, value: c.id })),
+  ...categories.value.map(c => ({ label: c.name, value: c.id })),
 ])
 
 async function addBookmark() {
-  await ($api as typeof $fetch)("/bookmarks/", {
-    method: "POST",
-    body: {
-      chunk: props.chunkId,
-      category: selectedCategory.value || undefined,
-      note: note.value,
-    },
-  })
-  isOpen.value = false
-  note.value = ""
-  selectedCategory.value = ""
+  saveError.value = ""
+  try {
+    await ($api as typeof $fetch)("/bookmarks/", {
+      method: "POST",
+      body: {
+        chunk: props.chunkId,
+        category: selectedCategory.value || undefined,
+        note: note.value,
+        query: searchStore.lastQuery,
+      },
+    })
+    isOpen.value = false
+    note.value = ""
+    selectedCategory.value = ""
+  } catch {
+    saveError.value = "Failed to save bookmark"
+  }
 }
 </script>
 
@@ -54,6 +65,7 @@ async function addBookmark() {
           placeholder="Category (optional)"
         />
         <UTextarea v-model="note" placeholder="Note (optional)" size="sm" :rows="2" />
+        <UAlert v-if="saveError" color="error" :description="saveError" />
         <UButton size="sm" block @click="addBookmark">Save</UButton>
       </div>
     </template>

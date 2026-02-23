@@ -3,7 +3,7 @@ definePageMeta({ middleware: 'auth' })
 const { $api } = useNuxtApp()
 
 interface Category { id: string; name: string }
-interface BookmarkItem { id: string; chunk: string; chunk_text: string; source_title: string; source_id: string; category: string | null; note: string; created_at: string }
+interface BookmarkItem { id: string; chunk: string; chunk_text: string; source_title: string; source_id: string; category: string | null; note: string; query: string; created_at: string }
 
 const { data: categories, refresh: refreshCategories } = await useFetch<Category[]>('/bookmark-categories/', {
   $fetch: $api as typeof $fetch,
@@ -68,9 +68,12 @@ async function deleteCategory(id: string) {
         <div v-if="uncategorized.length" class="space-y-2">
           <p class="text-xs font-semibold text-dimmed uppercase tracking-wider">Uncategorized</p>
           <div v-for="bm in uncategorized" :key="bm.id" class="flex items-start justify-between gap-2 p-3 bg-default rounded-lg ring ring-default">
-            <div class="min-w-0">
+            <div class="min-w-0 flex-1">
               <NuxtLink :to="`/documents/${bm.source_id}`" class="text-xs font-medium text-dimmed hover:text-default truncate block">{{ bm.source_title }}</NuxtLink>
               <p class="text-sm text-default mt-0.5 line-clamp-3">{{ bm.chunk_text }}</p>
+              <NuxtLink v-if="bm.query" :to="`/search?q=${encodeURIComponent(bm.query)}`" class="inline-flex items-center gap-1 mt-1.5 text-xs text-primary hover:underline">
+                <UIcon name="i-lucide-search" class="w-3 h-3" />{{ bm.query }}
+              </NuxtLink>
               <p v-if="bm.note" class="text-xs text-dimmed mt-1 italic">{{ bm.note }}</p>
             </div>
             <UButton size="xs" variant="ghost" color="error" icon="i-lucide-trash" class="shrink-0" @click="deleteBookmark(bm.id)" />
@@ -84,9 +87,12 @@ async function deleteCategory(id: string) {
           </div>
           <div v-if="bookmarksByCategory(cat.id).length" class="space-y-2">
             <div v-for="bm in bookmarksByCategory(cat.id)" :key="bm.id" class="flex items-start justify-between gap-2 p-3 bg-default rounded-lg ring ring-default">
-              <div class="min-w-0">
+              <div class="min-w-0 flex-1">
                 <NuxtLink :to="`/documents/${bm.source_id}`" class="text-xs font-medium text-dimmed hover:text-default truncate block">{{ bm.source_title }}</NuxtLink>
                 <p class="text-sm text-default mt-0.5 line-clamp-3">{{ bm.chunk_text }}</p>
+                <NuxtLink v-if="bm.query" :to="`/search?q=${encodeURIComponent(bm.query)}`" class="inline-flex items-center gap-1 mt-1.5 text-xs text-primary hover:underline">
+                  <UIcon name="i-lucide-search" class="w-3 h-3" />{{ bm.query }}
+                </NuxtLink>
                 <p v-if="bm.note" class="text-xs text-dimmed mt-1 italic">{{ bm.note }}</p>
               </div>
               <UButton size="xs" variant="ghost" color="error" icon="i-lucide-trash" class="shrink-0" @click="deleteBookmark(bm.id)" />
