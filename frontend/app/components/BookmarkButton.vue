@@ -3,7 +3,7 @@ const props = defineProps<{ chunkId: string }>()
 const { $api } = useNuxtApp()
 const isOpen = ref(false)
 const note = ref("")
-const selectedCategory = ref<string | null>(null)
+const selectedCategory = ref("")
 
 interface Category {
   id: string
@@ -14,6 +14,11 @@ const { data: categories } = await useFetch<Category[]>("/bookmark-categories/",
   $fetch: $api as typeof $fetch,
   default: () => [] as Category[],
 })
+
+const categoryItems = computed(() => [
+  { label: "No category", value: "" },
+  ...(categories.value || []).map(c => ({ label: c.name, value: c.id })),
+])
 
 async function addBookmark() {
   await ($api as typeof $fetch)("/bookmarks/", {
@@ -26,7 +31,7 @@ async function addBookmark() {
   })
   isOpen.value = false
   note.value = ""
-  selectedCategory.value = null
+  selectedCategory.value = ""
 }
 </script>
 
@@ -44,7 +49,7 @@ async function addBookmark() {
         <p class="text-sm font-medium">Add bookmark</p>
         <USelect
           v-model="selectedCategory"
-          :options="[{ label: 'No category', value: null }, ...(categories || []).map(c => ({ label: c.name, value: c.id }))]"
+          :items="categoryItems"
           size="sm"
           placeholder="Category (optional)"
         />

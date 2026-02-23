@@ -18,7 +18,7 @@ class BookmarkViewSet(ModelViewSet):
     serializer_class = BookmarkSerializer
 
     def get_queryset(self):
-        qs = Bookmark.objects.filter(user=self.request.user)
+        qs = Bookmark.objects.filter(user=self.request.user).select_related("chunk__source")
         category_id = self.request.query_params.get("category")
         if category_id:
             qs = qs.filter(category_id=category_id)
