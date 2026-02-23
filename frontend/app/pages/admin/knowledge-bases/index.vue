@@ -3,10 +3,16 @@ definePageMeta({ middleware: 'admin', layout: 'admin' })
 const { $api } = useNuxtApp()
 
 interface KB { id: string; name: string; description: string; owner_username: string; created_at: string }
+interface Invitation { id: string; kb_id: string; kb_name: string; kb_description: string; owner_username: string }
 
 const { data: kbs, refresh } = await useFetch<KB[]>('/knowledge-bases/', {
   $fetch: $api as typeof $fetch,
   default: () => [] as KB[],
+})
+
+const { data: invitations, refresh: refreshInvitations } = await useFetch<Invitation[]>('/kb-invitations/', {
+  $fetch: $api as typeof $fetch,
+  default: () => [] as Invitation[],
 })
 
 const showCreate = ref(false)
@@ -24,6 +30,17 @@ const deleteTargetId = ref<string | null>(null)
 
 function confirmDelete(id: string) {
   deleteTargetId.value = id
+}
+
+async function acceptInvitation(id: string) {
+  await ($api as typeof $fetch)(`/kb-invitations/${id}/accept/`, { method: 'POST' })
+  refreshInvitations()
+  refresh()
+}
+
+async function declineInvitation(id: string) {
+  await ($api as typeof $fetch)(`/kb-invitations/${id}/decline/`, { method: 'POST' })
+  refreshInvitations()
 }
 
 async function doDelete() {
@@ -72,6 +89,21 @@ function onDeleteModalUpdate(open: boolean) {
             <UButton color="neutral" variant="ghost" @click="deleteTargetId = null">Cancel</UButton>
           </template>
         </UModal>
+
+        <div v-if="invitations?.length" class="space-y-2">
+          <p class="text-xs font-semibold text-dimmed uppercase tracking-wider">Pending Invitations</p>
+          <div v-for="inv in invitations" :key="inv.id" class="flex items-center justify-between gap-3 p-4 bg-default rounded-lg ring ring-default">
+            <div class="min-w-0">
+              <p class="font-medium text-highlighted">{{ inv.kb_name }}</p>
+              <p class="text-xs text-dimmed mt-0.5">Shared by {{ inv.owner_username }}</p>
+              <p v-if="inv.kb_description" class="text-sm text-muted mt-1">{{ inv.kb_description }}</p>
+            </div>
+            <div class="flex gap-2 shrink-0">
+              <UButton size="xs" color="neutral" variant="outline" icon="i-lucide-check" @click="acceptInvitation(inv.id)">Accept</UButton>
+              <UButton size="xs" color="error" variant="ghost" icon="i-lucide-x" @click="declineInvitation(inv.id)">Decline</UButton>
+            </div>
+          </div>
+        </div>
 
         <div class="space-y-2">
           <div v-for="kb in kbs" :key="kb.id" class="flex items-center justify-between p-4 bg-default rounded-lg ring ring-default">

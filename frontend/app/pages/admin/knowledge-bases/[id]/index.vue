@@ -146,14 +146,17 @@ async function deleteSource(id: string) {
 // ── Share section ──────────────────────────────────────────────────────────
 const shareUsername = ref('')
 const shareError = ref('')
+const shareSuccess = ref('')
 
 async function share() {
   shareError.value = ''
+  shareSuccess.value = ''
   try {
     const users = await ($api as typeof $fetch)<{ id: string; username: string }[]>('/auth/users/')
     const target = users.find(u => u.username === shareUsername.value)
     if (!target) { shareError.value = 'User not found'; return }
     await ($api as typeof $fetch)(`/knowledge-bases/${kbId}/share/`, { method: 'POST', body: { user_id: target.id } })
+    shareSuccess.value = `${shareUsername.value} has been invited.`
     shareUsername.value = ''
   } catch {
     shareError.value = 'Failed to share'
@@ -338,6 +341,7 @@ async function share() {
               <UInput v-model="shareUsername" placeholder="Username" size="sm" class="flex-1" />
               <UButton size="sm" :disabled="!shareUsername" @click="share">Share</UButton>
             </div>
+            <UAlert v-if="shareSuccess" color="success" :description="shareSuccess" class="mt-2" />
             <UAlert v-if="shareError" color="error" :description="shareError" class="mt-2" />
           </div>
 

@@ -29,6 +29,10 @@ class KnowledgeBase(UUIDModel):
 
 
 class KBAccess(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        ACCEPTED = "accepted", "Accepted"
+
     kb = models.ForeignKey(
         KnowledgeBase, on_delete=models.CASCADE, related_name="access_entries"
     )
@@ -36,6 +40,9 @@ class KBAccess(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="kb_access_entries",
+    )
+    status = models.CharField(
+        max_length=10, choices=Status.choices, default=Status.ACCEPTED
     )
     granted_at = models.DateTimeField(auto_now_add=True)
 

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from apps.knowledge.models import GitCredential, KnowledgeBase, Source
+from apps.knowledge.models import GitCredential, KnowledgeBase, KBAccess, Source
 
 
 class KnowledgeBaseSerializer(serializers.ModelSerializer):
@@ -9,6 +9,18 @@ class KnowledgeBaseSerializer(serializers.ModelSerializer):
         model = KnowledgeBase
         fields = ["id", "name", "description", "owner", "owner_username", "created_at", "updated_at"]
         read_only_fields = ["id", "owner", "owner_username", "created_at", "updated_at"]
+
+
+class KBInvitationSerializer(serializers.ModelSerializer):
+    kb_id = serializers.UUIDField(source="kb.id", read_only=True)
+    kb_name = serializers.CharField(source="kb.name", read_only=True)
+    kb_description = serializers.CharField(source="kb.description", read_only=True)
+    owner_username = serializers.CharField(source="kb.owner.username", read_only=True)
+
+    class Meta:
+        model = KBAccess
+        fields = ["id", "kb_id", "kb_name", "kb_description", "owner_username", "granted_at"]
+        read_only_fields = fields
 
 
 class GitCredentialSerializer(serializers.ModelSerializer):
