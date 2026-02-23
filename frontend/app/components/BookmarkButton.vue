@@ -58,11 +58,13 @@ async function addBookmark() {
     <template #content>
       <div class="p-3 w-56 space-y-3">
         <p class="text-sm font-medium">Add bookmark</p>
-        <USelect
+        <USelectMenu
           v-model="selectedCategory"
           :items="categoryItems"
+          value-key="value"
           size="sm"
           placeholder="Category (optional)"
+          class="w-full"
         />
         <UTextarea v-model="note" placeholder="Note (optional)" size="sm" :rows="2" />
         <UAlert v-if="saveError" color="error" :description="saveError" />
