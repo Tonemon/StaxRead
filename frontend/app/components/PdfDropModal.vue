@@ -66,6 +66,10 @@ function close() {
   selectedKbId.value = ''
 }
 
+function onModalUpdate(open: boolean) {
+  if (!open) close()
+}
+
 const statusIcon: Record<string, string> = {
   pending: 'i-lucide-file',
   uploading: 'i-lucide-loader-circle',
@@ -82,7 +86,7 @@ const statusColor: Record<string, string> = {
 </script>
 
 <template>
-  <UModal :open="open" title="Upload PDF to Knowledge Base" :ui="{ width: 'sm:max-w-lg' }" @update:open="if (!$event) close()">
+  <UModal :open="open" title="Upload PDF to Knowledge Base" :ui="{ width: 'sm:max-w-lg' }" @update:open="onModalUpdate">
     <template #body>
       <div class="space-y-4">
         <UFormField label="Knowledge Base">
