@@ -41,6 +41,7 @@ class Bookmark(UUIDModel):
         related_name="bookmarks",
     )
     note = models.TextField(blank=True)
+    query = models.TextField(blank=True)
 
     class Meta:
         ordering = ["-created_at"]

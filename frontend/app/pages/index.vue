@@ -7,7 +7,7 @@ const { $api } = useNuxtApp()
 const query = ref('')
 const loading = ref(false)
 
-interface BookmarkItem { id: string; chunk: string; note: string; category: string | null; created_at: string }
+interface BookmarkItem { id: string; chunk: string; chunk_text: string; query: string; note: string; category: string | null; created_at: string }
 
 const { data: bookmarks } = await useFetch<BookmarkItem[]>('/bookmarks/', {
   $fetch: $api as typeof $fetch,
@@ -33,8 +33,12 @@ async function search() {
 const suggestionBookmarks = computed(() => (bookmarks.value || []).slice(0, 7))
 
 function bookmarkLabel(item: BookmarkItem) {
-  const text = item.note || item.chunk
+  const text = item.query || item.note || item.chunk_text
   return text.length > 45 ? text.slice(0, 42) + '…' : text
+}
+
+function bookmarkQuery(item: BookmarkItem) {
+  return item.query || item.chunk_text
 }
 </script>
 
@@ -75,7 +79,7 @@ function bookmarkLabel(item: BookmarkItem) {
               color="neutral"
               variant="outline"
               class="rounded-full"
-              @click="query = item.chunk; search()"
+              @click="query = bookmarkQuery(item); search()"
             />
           </div>
         </UContainer>
