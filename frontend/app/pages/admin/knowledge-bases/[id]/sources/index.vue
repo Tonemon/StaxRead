@@ -212,10 +212,10 @@ const statusColor: Record<string, string> = {
                   <UInput v-model="gitForm.title" placeholder="e.g. My Project Docs" class="w-full" />
                 </UFormField>
                 <UFormField label="Repository URL">
-                  <UInput v-model="gitForm.gitUrl" placeholder="https://github.com/user/repo" class="w-full" />
+                  <UInput v-model="gitForm.gitUrl" placeholder="https://github.com/user/repo" class="w-full" @keydown.enter="submitGit" />
                 </UFormField>
                 <UFormField label="Branch">
-                  <UInput v-model="gitForm.gitBranch" class="w-full" />
+                  <UInput v-model="gitForm.gitBranch" class="w-full" @keydown.enter="submitGit" />
                 </UFormField>
                 <UFormField label="Git Credential (optional)">
                   <USelectMenu

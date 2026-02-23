@@ -61,7 +61,7 @@ onUnmounted(clearRefresh)
 
         <UModal v-model:open="showNewCategory" title="New Category">
           <template #body>
-            <UInput v-model="newCategoryName" placeholder="Category name" autofocus />
+            <UInput v-model="newCategoryName" placeholder="Category name" autofocus @keydown.enter="createCategory" />
           </template>
           <template #footer>
             <UButton @click="createCategory">Create</UButton>

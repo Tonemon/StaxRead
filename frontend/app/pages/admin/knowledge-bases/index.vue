@@ -21,6 +21,7 @@ const showCreate = ref(false)
 const form = reactive({ name: '', description: '' })
 
 async function createKB() {
+  if (!form.name) return
   await ($api as typeof $fetch)('/knowledge-bases/', { method: 'POST', body: { name: form.name, description: form.description } })
   form.name = ''
   form.description = ''
@@ -84,7 +85,7 @@ onUnmounted(clearRefresh)
         <UModal v-model:open="showCreate" title="Create Knowledge Base">
           <template #body>
             <div class="space-y-3">
-              <UFormField label="Name"><UInput v-model="form.name" autofocus /></UFormField>
+              <UFormField label="Name"><UInput v-model="form.name" autofocus @keydown.enter="createKB" /></UFormField>
               <UFormField label="Description"><UTextarea v-model="form.description" :rows="2" /></UFormField>
             </div>
           </template>

@@ -212,6 +212,7 @@ async function share() {
                   :rows="2"
                   class="w-full text-sm"
                   @blur="saveDescription"
+                  @keydown.enter.prevent="saveDescription"
                   @keydown.escape="cancelEditDescription"
                 />
               </template>
@@ -341,7 +342,7 @@ async function share() {
           <div>
             <h2 class="text-lg font-semibold text-highlighted mb-3">Share Access</h2>
             <div class="flex gap-2">
-              <UInput v-model="shareUsername" placeholder="Username" size="sm" class="flex-1" />
+              <UInput v-model="shareUsername" placeholder="Username" size="sm" class="flex-1" @keydown.enter="share" />
               <UButton size="sm" :disabled="!shareUsername" @click="share">Share</UButton>
             </div>
             <UAlert v-if="shareSuccess" color="success" :description="shareSuccess" class="mt-2" />

@@ -15,6 +15,7 @@ const form = reactive({ label: '', pat: '' })
 const submitting = ref(false)
 
 async function createCredential() {
+  if (!form.label || !form.pat) return
   submitting.value = true
   try {
     await ($api as typeof $fetch)('/git-credentials/', { method: 'POST', body: { label: form.label, pat: form.pat } })
@@ -63,8 +64,8 @@ onUnmounted(clearRefresh)
         <UModal v-model:open="showCreate" title="Add Git Credential">
           <template #body>
             <div class="space-y-3">
-              <UFormField label="Label"><UInput v-model="form.label" autofocus /></UFormField>
-              <UFormField label="Personal Access Token"><UInput v-model="form.pat" type="password" /></UFormField>
+              <UFormField label="Label"><UInput v-model="form.label" autofocus @keydown.enter="createCredential" /></UFormField>
+              <UFormField label="Personal Access Token"><UInput v-model="form.pat" type="password" @keydown.enter="createCredential" /></UFormField>
             </div>
           </template>
           <template #footer>
