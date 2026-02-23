@@ -21,6 +21,13 @@ const { data: invitations, refresh: refreshInvitations } = await useFetch<Invita
   default: () => [] as Invitation[],
 })
 
+const { data: kbs, refresh: refreshKbs } = await useFetch<{ id: string }[]>('/knowledge-bases/', {
+  $fetch: $api as typeof $fetch,
+  default: () => [] as { id: string }[],
+})
+
+const noKbsWarning = computed(() => query.value.trim().length > 0 && !kbs.value?.length)
+
 async function search() {
   if (!query.value.trim() || loading.value) return
   loading.value = true
@@ -74,7 +81,7 @@ watch(focusSearchFlag, (v) => {
 })
 
 onMounted(() => {
-  setRefresh(() => { refreshBookmarks(); refreshInvitations() })
+  setRefresh(() => { refreshBookmarks(); refreshInvitations(); refreshKbs() })
   if (focusSearchFlag.value) {
     focusSearchFlag.value = false
     focusSearch()
@@ -112,6 +119,10 @@ onUnmounted(clearRefresh)
               </template>
             </UChatPrompt>
           </div>
+
+          <p v-if="noKbsWarning" class="text-sm text-warning">
+            You have no knowledge bases. <NuxtLink to="/admin/knowledge-bases" class="underline hover:text-warning/80">Create one</NuxtLink> to start searching.
+          </p>
 
           <div v-if="invitations?.length" class="space-y-2">
             <p class="text-xs font-semibold text-dimmed uppercase tracking-wider">Pending Knowledge Base Invitations</p>

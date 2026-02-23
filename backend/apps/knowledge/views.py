@@ -51,6 +51,20 @@ class KnowledgeBaseViewSet(ModelViewSet):
         )
         return Response({"detail": f"{target_user.username} has been invited."})
 
+    @action(detail=True, methods=["get"])
+    def members(self, request, pk=None):
+        kb = self.get_object()
+        entries = (
+            KBAccess.objects.filter(kb=kb)
+            .exclude(user=kb.owner)
+            .select_related("user")
+        )
+        data = [
+            {"user_id": str(e.user.pk), "username": e.user.username, "status": e.status}
+            for e in entries
+        ]
+        return Response(data)
+
     @action(detail=True, methods=["post"])
     def leave(self, request, pk=None):
         kb = self.get_object()

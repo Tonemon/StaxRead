@@ -147,6 +147,13 @@ async function deleteSource(id: string) {
 }
 
 // ── Share section ──────────────────────────────────────────────────────────
+interface Member { user_id: string; username: string; status: 'pending' | 'accepted' }
+
+const { data: members, refresh: refreshMembers } = await useFetch<Member[]>(`/knowledge-bases/${kbId}/members/`, {
+  $fetch: $api as typeof $fetch,
+  default: () => [] as Member[],
+})
+
 const shareUsername = ref('')
 const shareError = ref('')
 const shareSuccess = ref('')
@@ -161,6 +168,7 @@ async function share() {
     await ($api as typeof $fetch)(`/knowledge-bases/${kbId}/share/`, { method: 'POST', body: { user_id: target.id } })
     shareSuccess.value = `${shareUsername.value} has been invited.`
     shareUsername.value = ''
+    refreshMembers()
   } catch {
     shareError.value = 'Failed to share'
   }
@@ -347,6 +355,18 @@ async function share() {
             </div>
             <UAlert v-if="shareSuccess" color="success" :description="shareSuccess" class="mt-2" />
             <UAlert v-if="shareError" color="error" :description="shareError" class="mt-2" />
+            <div v-if="members?.length" class="mt-3 space-y-1.5">
+              <div
+                v-for="m in members"
+                :key="m.user_id"
+                class="flex items-center justify-between text-sm py-1"
+              >
+                <span class="text-default">{{ m.username }}</span>
+                <UBadge :color="m.status === 'accepted' ? 'success' : 'info'" variant="subtle" size="xs">
+                  {{ m.status === 'accepted' ? 'Accepted' : 'Invited' }}
+                </UBadge>
+              </div>
+            </div>
           </div>
 
         </UContainer>
