@@ -1,6 +1,7 @@
 <script setup lang="ts">
 definePageMeta({ middleware: 'admin', layout: 'admin' })
 const { $api } = useNuxtApp()
+const authStore = useAuthStore()
 
 interface KB { id: string; name: string; description: string; owner_username: string; created_at: string }
 interface Invitation { id: string; kb_id: string; kb_name: string; kb_description: string; owner_username: string }
@@ -28,6 +29,11 @@ async function createKB() {
 
 const deleteTargetId = ref<string | null>(null)
 
+const deleteTargetIsShared = computed(() => {
+  const kb = kbs.value?.find(k => k.id === deleteTargetId.value)
+  return kb ? kb.owner_username !== authStore.user?.username : false
+})
+
 function confirmDelete(id: string) {
   deleteTargetId.value = id
 }
@@ -45,7 +51,11 @@ async function declineInvitation(id: string) {
 
 async function doDelete() {
   if (!deleteTargetId.value) return
-  await ($api as typeof $fetch)(`/knowledge-bases/${deleteTargetId.value}/`, { method: 'DELETE' })
+  if (deleteTargetIsShared.value) {
+    await ($api as typeof $fetch)(`/knowledge-bases/${deleteTargetId.value}/leave/`, { method: 'POST' })
+  } else {
+    await ($api as typeof $fetch)(`/knowledge-bases/${deleteTargetId.value}/`, { method: 'DELETE' })
+  }
   deleteTargetId.value = null
   refresh()
 }
@@ -80,12 +90,15 @@ function onDeleteModalUpdate(open: boolean) {
           </template>
         </UModal>
 
-        <UModal :open="!!deleteTargetId" title="Delete Knowledge Base" @update:open="onDeleteModalUpdate">
+        <UModal :open="!!deleteTargetId" :title="deleteTargetIsShared ? 'Leave Knowledge Base' : 'Delete Knowledge Base'" @update:open="onDeleteModalUpdate">
           <template #body>
-            <p class="text-sm text-muted">Are you sure you want to delete this knowledge base? This action cannot be undone.</p>
+            <p class="text-sm text-muted">
+              <template v-if="deleteTargetIsShared">Are you sure you want to leave this knowledge base? You will lose access to it.</template>
+              <template v-else>Are you sure you want to delete this knowledge base? This action cannot be undone.</template>
+            </p>
           </template>
           <template #footer>
-            <UButton color="error" @click="doDelete">Delete</UButton>
+            <UButton color="error" @click="doDelete">{{ deleteTargetIsShared ? 'Leave' : 'Delete' }}</UButton>
             <UButton color="neutral" variant="ghost" @click="deleteTargetId = null">Cancel</UButton>
           </template>
         </UModal>
@@ -108,7 +121,10 @@ function onDeleteModalUpdate(open: boolean) {
         <div class="space-y-2">
           <div v-for="kb in kbs" :key="kb.id" class="flex items-center justify-between p-4 bg-default rounded-lg ring ring-default">
             <div>
-              <NuxtLink :to="`/admin/knowledge-bases/${kb.id}`" class="font-medium hover:underline text-highlighted">{{ kb.name }}</NuxtLink>
+              <div class="flex items-center gap-1.5">
+                <UIcon v-if="kb.owner_username !== authStore.user?.username" name="i-lucide-share-2" class="size-3.5 text-dimmed shrink-0" />
+                <NuxtLink :to="`/admin/knowledge-bases/${kb.id}`" class="font-medium hover:underline text-highlighted">{{ kb.name }}</NuxtLink>
+              </div>
               <p class="text-xs text-dimmed mt-0.5">Owner: {{ kb.owner_username }}</p>
               <p v-if="kb.description" class="text-sm text-muted mt-1">{{ kb.description }}</p>
             </div>

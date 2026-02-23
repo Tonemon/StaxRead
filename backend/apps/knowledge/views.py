@@ -52,6 +52,17 @@ class KnowledgeBaseViewSet(ModelViewSet):
         return Response({"detail": f"{target_user.username} has been invited."})
 
     @action(detail=True, methods=["post"])
+    def leave(self, request, pk=None):
+        kb = self.get_object()
+        if kb.owner == request.user:
+            return Response(
+                {"detail": "Owner cannot leave their own knowledge base."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        KBAccess.objects.filter(kb=kb, user=request.user).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=["post"])
     def unshare(self, request, pk=None):
         kb = self.get_object()
         if kb.owner != request.user:
