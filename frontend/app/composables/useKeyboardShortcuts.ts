@@ -26,7 +26,7 @@ function onKeydown(e: KeyboardEvent) {
   }
   if (e.ctrlKey && !e.altKey && e.key === 'k') {
     e.preventDefault()
-    _router?.push('/admin/knowledge-bases')
+    _router?.push('/settings/knowledge-bases')
     return
   }
   if (e.ctrlKey && !e.altKey && e.key === 'b') {

@@ -145,7 +145,7 @@ onUnmounted(clearRefresh)
           </div>
 
           <p v-if="noKbsWarning" class="text-sm text-warning">
-            You have no knowledge bases. <NuxtLink to="/admin/knowledge-bases" class="underline hover:text-warning/80">Create one</NuxtLink> to start searching.
+            You have no knowledge bases. <NuxtLink to="/settings/knowledge-bases" class="underline hover:text-warning/80">Create one</NuxtLink> to start searching.
           </p>
           <p v-else-if="noKbsSelectedWarning" class="text-sm text-warning">
             Please select a knowledge base to search.

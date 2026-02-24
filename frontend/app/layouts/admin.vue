@@ -3,10 +3,10 @@ const { logout } = useAuth()
 const authStore = useAuthStore()
 
 const navLinks = computed(() => [
-  { label: 'Knowledge Bases', to: '/admin/knowledge-bases', icon: 'i-lucide-book-open' },
-  { label: 'Git Credentials', to: '/admin/git-credentials', icon: 'i-lucide-key' },
-  ...(authStore.isSuperuser ? [{ label: 'Users', to: '/admin/users', icon: 'i-lucide-users' }] : []),
-  { label: 'Account', to: '/admin/account', icon: 'i-lucide-user-circle' },
+  { label: 'Knowledge Bases', to: '/settings/knowledge-bases', icon: 'i-lucide-book-open' },
+  { label: 'Git Credentials', to: '/settings/git-credentials', icon: 'i-lucide-key' },
+  ...(authStore.isSuperuser ? [{ label: 'Users', to: '/settings/users', icon: 'i-lucide-users' }] : []),
+  { label: 'Account', to: '/settings/account', icon: 'i-lucide-user-circle' },
 ])
 
 const open = ref(false)

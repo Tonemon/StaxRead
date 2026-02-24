@@ -1,5 +1,5 @@
 <script setup lang="ts">
-definePageMeta({ middleware: 'admin', layout: 'admin' })
+definePageMeta({ middleware: 'auth', layout: 'admin' })
 const route = useRoute()
 const { $api } = useNuxtApp()
 const kbId = route.params.id as string
@@ -196,7 +196,7 @@ async function share() {
 
           <!-- Header -->
           <div>
-            <NuxtLink to="/admin/knowledge-bases" class="text-sm text-dimmed hover:text-default">&larr; Knowledge Bases</NuxtLink>
+            <NuxtLink to="/settings/knowledge-bases" class="text-sm text-dimmed hover:text-default">&larr; Knowledge Bases</NuxtLink>
 
             <!-- Editable name -->
             <div class="mt-2">
@@ -266,7 +266,7 @@ async function share() {
           <div>
             <div class="flex items-center justify-between mb-4">
               <h2 class="text-lg font-semibold text-highlighted">Sources</h2>
-              <NuxtLink :to="`/admin/knowledge-bases/${kbId}/sources`">
+              <NuxtLink :to="`/settings/knowledge-bases/${kbId}/sources`">
                 <UButton size="sm" icon="i-lucide-plus" color="neutral" variant="outline">Add Source</UButton>
               </NuxtLink>
             </div>

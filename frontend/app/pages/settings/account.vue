@@ -1,5 +1,5 @@
 <script setup lang="ts">
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: 'auth', layout: 'admin' })
 const { $api } = useNuxtApp()
 const authStore = useAuthStore()
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-definePageMeta({ middleware: 'admin', layout: 'admin' })
+definePageMeta({ middleware: 'auth', layout: 'admin' })
 const { $api } = useNuxtApp()
 const authStore = useAuthStore()
 const { setRefresh, clearRefresh } = useKeyboardShortcuts()
@@ -128,7 +128,7 @@ onUnmounted(clearRefresh)
             <div>
               <div class="flex items-center gap-1.5">
                 <UIcon v-if="kb.owner_username !== authStore.user?.username" name="i-lucide-share-2" class="size-3.5 text-dimmed shrink-0" />
-                <NuxtLink :to="`/admin/knowledge-bases/${kb.id}`" class="font-medium hover:underline text-highlighted">{{ kb.name }}</NuxtLink>
+                <NuxtLink :to="`/settings/knowledge-bases/${kb.id}`" class="font-medium hover:underline text-highlighted">{{ kb.name }}</NuxtLink>
               </div>
               <p class="text-xs text-dimmed mt-0.5">Owner: {{ kb.owner_username }}</p>
               <p v-if="kb.description" class="text-sm text-muted mt-1">{{ kb.description }}</p>

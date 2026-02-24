@@ -1,5 +1,5 @@
 <script setup lang="ts">
-definePageMeta({ middleware: 'admin', layout: 'admin' })
+definePageMeta({ middleware: 'auth', layout: 'admin' })
 const route = useRoute()
 const { $api } = useNuxtApp()
 const kbId = route.params.id as string
@@ -143,7 +143,7 @@ const statusColor: Record<string, string> = {
       <div class="flex flex-1">
         <UContainer class="flex-1 flex flex-col gap-4 py-6 max-w-2xl">
           <div>
-            <NuxtLink :to="`/admin/knowledge-bases/${kbId}`" class="text-sm text-dimmed hover:text-default">&larr; Back</NuxtLink>
+            <NuxtLink :to="`/settings/knowledge-bases/${kbId}`" class="text-sm text-dimmed hover:text-default">&larr; Back</NuxtLink>
             <h1 class="text-2xl font-bold text-highlighted mt-2">Add Source</h1>
           </div>
 
