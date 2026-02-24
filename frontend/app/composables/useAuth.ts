@@ -9,7 +9,7 @@ export const useAuth = () => {
       { method: 'POST', body: { username, password } }
     )
     store.setTokens(resp.access)
-    const user = await $fetch<{ id: string; username: string; email: string; is_superuser: boolean }>(
+    const user = await $fetch<{ id: string; username: string; email: string; first_name: string; last_name: string; is_superuser: boolean; show_greeting: boolean; greeting_display: 'username' | 'full_name' | 'first_name' }>(
       `${config.public.apiBase}/auth/me/`,
       { headers: { Authorization: `Bearer ${resp.access}` } }
     )

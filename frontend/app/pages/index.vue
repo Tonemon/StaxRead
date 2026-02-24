@@ -5,6 +5,23 @@ const store = useSearchStore()
 const { $api } = useNuxtApp()
 const { setRefresh, clearRefresh, focusSearchFlag } = useKeyboardShortcuts()
 const { refreshKbList } = useKbList()
+const authStore = useAuthStore()
+
+const GREETINGS = ['Hello', 'Hi', 'Hey', 'Welcome back', 'Good to see you']
+const greeting = GREETINGS[Math.floor(Math.random() * GREETINGS.length)]
+
+const greetingText = computed(() => {
+  const user = authStore.user
+  if (!user?.show_greeting) return null
+  const display = user.greeting_display
+  if (display === 'full_name' && user.first_name && user.last_name) {
+    return `${greeting}, ${user.first_name} ${user.last_name}`
+  }
+  if ((display === 'full_name' || display === 'first_name') && user.first_name) {
+    return `${greeting}, ${user.first_name}`
+  }
+  return `${greeting}, ${user.username}`
+})
 
 const query = ref('')
 const loading = ref(false)
@@ -12,7 +29,7 @@ const loading = ref(false)
 interface BookmarkItem { id: string; chunk: string; chunk_text: string; query: string; note: string; category: string | null; created_at: string }
 interface Invitation { id: string; kb_id: string; kb_name: string; owner_username: string }
 
-const { data: bookmarks } = await useFetch<BookmarkItem[]>('/bookmarks/', {
+const { data: bookmarks, refresh: refreshBookmarks } = await useFetch<BookmarkItem[]>('/bookmarks/', {
   $fetch: $api as typeof $fetch,
   default: () => [] as BookmarkItem[],
 })
@@ -105,6 +122,8 @@ onUnmounted(clearRefresh)
     <template #body>
       <div class="flex flex-1">
         <UContainer class="flex-1 flex flex-col justify-center gap-4 sm:gap-6 py-8">
+          <p v-if="greetingText" class="text-sm text-dimmed">{{ greetingText }}</p>
+
           <h1 class="text-3xl sm:text-4xl text-highlighted font-bold">
             What are you looking for?
           </h1>

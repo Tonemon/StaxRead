@@ -6,7 +6,7 @@ from rest_framework_simplejwt.views import (
     TokenBlacklistView,
 )
 
-from apps.accounts.views import UserViewSet, MeView
+from apps.accounts.views import UserViewSet, MeView, PasswordChangeView
 
 router = DefaultRouter()
 router.register(r"users", UserViewSet, basename="user")
@@ -16,5 +16,6 @@ urlpatterns = [
     path("refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("logout/", TokenBlacklistView.as_view(), name="token_blacklist"),
     path("me/", MeView.as_view(), name="me"),
+    path("me/change-password/", PasswordChangeView.as_view(), name="change-password"),
     path("", include(router.urls)),
 ]
