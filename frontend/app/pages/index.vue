@@ -4,6 +4,7 @@ const router = useRouter()
 const store = useSearchStore()
 const { $api } = useNuxtApp()
 const { setRefresh, clearRefresh, focusSearchFlag } = useKeyboardShortcuts()
+const { refreshKbList } = useKbList()
 
 const query = ref('')
 const loading = ref(false)
@@ -26,15 +27,17 @@ const { data: kbs, refresh: refreshKbs } = await useFetch<{ id: string }[]>('/kn
   default: () => [] as { id: string }[],
 })
 
-const noKbsWarning = computed(() => query.value.trim().length > 0 && !kbs.value?.length)
+const typingQuery = computed(() => query.value.trim().length > 0)
+const noKbsWarning = computed(() => typingQuery.value && !kbs.value?.length)
+const noKbsSelectedWarning = computed(() => typingQuery.value && !!kbs.value?.length && store.noKbsSelected)
 
 async function search() {
-  if (!query.value.trim() || loading.value) return
+  if (!query.value.trim() || loading.value || store.noKbsSelected) return
   loading.value = true
   try {
     const data = await ($api as typeof $fetch)<{ results: typeof store.results; query: string }>(
       '/search/',
-      { method: 'POST', body: { query: query.value, kb_ids: store.activeKbIds } }
+      { method: 'POST', body: { query: query.value, kb_ids: store.searchKbIds } }
     )
     store.results = data.results
     store.lastQuery = query.value
@@ -58,6 +61,8 @@ function bookmarkQuery(item: BookmarkItem) {
 async function acceptInvitation(id: string) {
   await ($api as typeof $fetch)(`/kb-invitations/${id}/accept/`, { method: 'POST' })
   refreshInvitations()
+  refreshKbs()
+  refreshKbList()
 }
 
 async function declineInvitation(id: string) {
@@ -122,6 +127,9 @@ onUnmounted(clearRefresh)
 
           <p v-if="noKbsWarning" class="text-sm text-warning">
             You have no knowledge bases. <NuxtLink to="/admin/knowledge-bases" class="underline hover:text-warning/80">Create one</NuxtLink> to start searching.
+          </p>
+          <p v-else-if="noKbsSelectedWarning" class="text-sm text-warning">
+            Please select a knowledge base to search.
           </p>
 
           <div v-if="invitations?.length" class="space-y-2">
