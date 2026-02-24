@@ -40,6 +40,10 @@ watch(open, async (val) => {
   }))
 })
 
+function sourceType(file: File): string {
+  return file.type === 'application/epub+zip' ? 'epub' : 'pdf'
+}
+
 async function upload() {
   if (!selectedKbId.value) return
   uploading.value = true
@@ -49,7 +53,7 @@ async function upload() {
       const fd = new FormData()
       fd.append('kb', selectedKbId.value)
       fd.append('title', entry.title || stemFromFilename(entry.file.name))
-      fd.append('source_type', 'pdf')
+      fd.append('source_type', sourceType(entry.file))
       fd.append('file', entry.file)
       await ($api as typeof $fetch)('/sources/', { method: 'POST', body: fd })
       entry.status = 'done'
@@ -86,7 +90,7 @@ const statusColor: Record<string, string> = {
 </script>
 
 <template>
-  <UModal :open="open" title="Upload PDF to Knowledge Base" :ui="{ width: 'sm:max-w-lg' }" @update:open="onModalUpdate">
+  <UModal :open="open" title="Upload to Knowledge Base" :ui="{ width: 'sm:max-w-lg' }" @update:open="onModalUpdate">
     <template #body>
       <div class="space-y-4">
         <UFormField label="Knowledge Base">

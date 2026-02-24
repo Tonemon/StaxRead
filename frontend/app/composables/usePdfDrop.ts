@@ -6,16 +6,18 @@ const pendingFiles = ref<File[]>([])
 const suppressGlobal = ref(false)
 const dropLabel = ref<string | null>(null)
 
-function hasPdfItem(e: DragEvent): boolean {
+const ACCEPTED_TYPES = ['application/pdf', 'application/epub+zip']
+
+function hasDocItem(e: DragEvent): boolean {
   const items = e.dataTransfer?.items
   if (items) {
-    return Array.from(items).some(i => i.kind === 'file' && i.type === 'application/pdf')
+    return Array.from(items).some(i => i.kind === 'file' && ACCEPTED_TYPES.includes(i.type))
   }
   return e.dataTransfer?.types.includes('Files') ?? false
 }
 
 function onDragEnter(e: DragEvent) {
-  if (!hasPdfItem(e)) return
+  if (!hasDocItem(e)) return
   dragCounter++
   isDragging.value = true
 }
@@ -39,7 +41,7 @@ function onDrop(e: DragEvent) {
   if (suppressGlobal.value) return
 
   const files = Array.from(e.dataTransfer?.files ?? []).filter(
-    f => f.type === 'application/pdf',
+    f => ACCEPTED_TYPES.includes(f.type),
   )
   if (files.length) pendingFiles.value = files
 }

@@ -24,9 +24,15 @@ function stemFromFilename(filename: string): string {
   return dot > 0 ? filename.substring(0, dot) : filename
 }
 
+const ACCEPTED_FILE_TYPES = ['application/pdf', 'application/epub+zip']
+
+function sourceTypeFromFile(file: File): string {
+  return file.type === 'application/epub+zip' ? 'epub' : 'pdf'
+}
+
 function onFileChange(e: Event) {
   const input = e.target as HTMLInputElement
-  const files = Array.from(input.files ?? []).filter(f => f.type === 'application/pdf')
+  const files = Array.from(input.files ?? []).filter(f => ACCEPTED_FILE_TYPES.includes(f.type))
   fileQueue.value = files.map(f => ({
     file: f,
     title: stemFromFilename(f.name),
@@ -53,7 +59,7 @@ async function submitFiles() {
       const fd = new FormData()
       fd.append('kb', kbId)
       fd.append('title', entry.title || stemFromFilename(entry.file.name))
-      fd.append('source_type', 'pdf')
+      fd.append('source_type', sourceTypeFromFile(entry.file))
       fd.append('file', entry.file)
       await ($api as typeof $fetch)('/sources/', { method: 'POST', body: fd })
       entry.status = 'done'
@@ -147,11 +153,11 @@ const statusColor: Record<string, string> = {
           <UTabs :items="tabs">
             <template #file>
               <div class="space-y-4 pt-4">
-                <UFormField label="Files" hint="Select one or more PDFs">
+                <UFormField label="Files" hint="Select one or more PDFs or EPUBs">
                   <input
                     ref="fileInputRef"
                     type="file"
-                    accept=".pdf"
+                    accept=".pdf,.epub"
                     multiple
                     class="text-sm text-default file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:bg-elevated file:text-default hover:file:bg-accented cursor-pointer"
                     @change="onFileChange"

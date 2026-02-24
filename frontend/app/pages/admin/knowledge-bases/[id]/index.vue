@@ -66,8 +66,13 @@ function stemFromFilename(filename: string): string {
   return dot > 0 ? filename.substring(0, dot) : filename
 }
 
+const ACCEPTED_DROP_TYPES: Record<string, string> = {
+  'application/pdf': 'pdf',
+  'application/epub+zip': 'epub',
+}
+
 async function onWindowDrop(e: DragEvent) {
-  const files = Array.from(e.dataTransfer?.files ?? []).filter(f => f.type === 'application/pdf')
+  const files = Array.from(e.dataTransfer?.files ?? []).filter(f => f.type in ACCEPTED_DROP_TYPES)
   if (!files.length) return
   for (const file of files) {
     const entry = reactive<DropEntry>({ name: file.name, status: 'uploading' })
@@ -76,7 +81,7 @@ async function onWindowDrop(e: DragEvent) {
       const fd = new FormData()
       fd.append('kb', kbId)
       fd.append('title', stemFromFilename(file.name))
-      fd.append('source_type', 'pdf')
+      fd.append('source_type', ACCEPTED_DROP_TYPES[file.type])
       fd.append('file', file)
       await ($api as typeof $fetch)('/sources/', { method: 'POST', body: fd })
       entry.status = 'done'
@@ -144,6 +149,11 @@ const emptyLabel: Record<string, string> = {
 async function deleteSource(id: string) {
   await ($api as typeof $fetch)(`/sources/${id}/`, { method: 'DELETE' })
   refreshSources()
+}
+
+async function downloadSource(id: string) {
+  const data = await ($api as typeof $fetch)<{ url: string }>(`/sources/${id}/document/`)
+  window.open(data.url, '_blank')
 }
 
 // ── Share section ──────────────────────────────────────────────────────────
@@ -280,7 +290,7 @@ async function share() {
                   <tr class="bg-elevated border-b border-default">
                     <th class="px-4 py-2.5 text-left text-xs font-semibold text-dimmed uppercase tracking-wider">Title</th>
                     <th class="px-4 py-2.5 text-left text-xs font-semibold text-dimmed uppercase tracking-wider w-28">Status</th>
-                    <th class="px-4 py-2.5 w-12"></th>
+                    <th class="px-4 py-2.5 w-20"></th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-default">
@@ -296,13 +306,23 @@ async function share() {
                       </UBadge>
                     </td>
                     <td class="px-4 py-3 text-right">
-                      <UButton
-                        icon="i-lucide-trash-2"
-                        size="xs"
-                        color="error"
-                        variant="ghost"
-                        @click="deleteSource(source.id)"
-                      />
+                      <div class="flex items-center justify-end gap-1">
+                        <UButton
+                          v-if="source.source_type !== 'git' && source.status === 'ready'"
+                          icon="i-lucide-download"
+                          size="xs"
+                          color="neutral"
+                          variant="ghost"
+                          @click="downloadSource(source.id)"
+                        />
+                        <UButton
+                          icon="i-lucide-trash-2"
+                          size="xs"
+                          color="error"
+                          variant="ghost"
+                          @click="deleteSource(source.id)"
+                        />
+                      </div>
                     </td>
                   </tr>
                   <tr v-if="!pagedSources.length">
