@@ -10,4 +10,4 @@ urlpatterns = [
 
 if settings.DEBUG:
     from django.contrib import admin
-    urlpatterns = [path("admin/", admin.site.urls)] + urlpatterns
+    urlpatterns = [path("django-admin/", admin.site.urls)] + urlpatterns

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 const route = useRoute()
 const router = useRouter()
-const isAdmin = computed(() => route.path.startsWith('/admin'))
+const isAdmin = computed(() => route.path.startsWith('/admin') || route.path.startsWith('/settings'))
 const isDocument = computed(() => route.path.startsWith('/documents/'))
 </script>
 

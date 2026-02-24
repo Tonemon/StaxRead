@@ -3,9 +3,7 @@ const { logout } = useAuth()
 const authStore = useAuthStore()
 
 const navLinks = [
-  { label: 'Knowledge Bases', to: '/settings/knowledge-bases', icon: 'i-lucide-book-open' },
-  { label: 'Git Credentials', to: '/settings/git-credentials', icon: 'i-lucide-key' },
-  { label: 'Account', to: '/settings/account', icon: 'i-lucide-user-circle' },
+  { label: 'Users', to: '/admin/users', icon: 'i-lucide-users' },
 ]
 
 const open = ref(false)
@@ -14,7 +12,7 @@ const open = ref(false)
 <template>
   <UDashboardGroup unit="rem">
     <UDashboardSidebar
-      id="admin"
+      id="superadmin"
       v-model:open="open"
       :min-size="12"
       collapsible
@@ -24,7 +22,7 @@ const open = ref(false)
       <template #header="{ collapsed }">
         <NuxtLink to="/" class="flex items-end gap-0.5">
           <Logo class="h-8 w-auto shrink-0" />
-          <span v-if="!collapsed" class="text-xl font-bold text-highlighted">Settings</span>
+          <span v-if="!collapsed" class="text-xl font-bold text-highlighted">Admin</span>
         </NuxtLink>
       </template>
 

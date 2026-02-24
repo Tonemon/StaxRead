@@ -1,5 +1,5 @@
 <script setup lang="ts">
-definePageMeta({ middleware: 'admin', layout: 'admin' })
+definePageMeta({ middleware: 'admin', layout: 'superadmin' })
 const { $api } = useNuxtApp()
 const { setRefresh, clearRefresh } = useKeyboardShortcuts()
 

@@ -145,6 +145,18 @@ const kbItems = computed(() =>
       <template #footer="{ collapsed }">
         <template v-if="authStore.isAuthenticated">
           <UButton
+            v-if="authStore.isSuperuser"
+            v-bind="{
+              label: collapsed ? undefined : 'Admin',
+              icon: 'i-lucide-shield',
+            }"
+            color="neutral"
+            variant="ghost"
+            block
+            :square="collapsed"
+            to="/admin"
+          />
+          <UButton
             v-bind="{
               label: collapsed ? undefined : (authStore.user?.username || 'Account'),
               trailingIcon: collapsed ? undefined : 'i-lucide-log-out',
