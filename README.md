@@ -6,7 +6,8 @@ Self-hosted semantic search over your own documents. Ingest PDFs, EPUBs, and Git
 
 - **Hybrid search** — dense (BAAI/bge-base-en-v1.5) + sparse (BM25 via FastEmbed) with Reciprocal Rank Fusion
 - **Multiple source types** — PDF, EPUB, Git repositories (Markdown + PDFs)
-- **Shareable Knowledge Bases** — share read access with other users
+- **Shareable Knowledge Bases** — invite other users; revoke access at any time
+- **API tokens** — generate scoped Bearer tokens to query Knowledge Bases from external applications
 - **Bookmarks** — save and organise search result passages
 - **Git sync** — Celery Beat job periodically re-ingests Git sources
 - **CPU-only** — no GPU required
@@ -52,13 +53,13 @@ STAXREAD_FERNET_KEY=<output of second command>
 docker compose exec django python manage.py createsuperuser
 ```
 
-Log in at http://localhost with these credentials. The Admin section (visible only to superusers) lets you manage Knowledge Bases, add sources, and create users.
+Log in at http://localhost with these credentials. The **Admin** section (visible only to superusers) lets you manage users. The **Settings** section (all users) manages Knowledge Bases, Git credentials, sharing, and account preferences.
 
 ## Architecture
 
 | Service | Role |
 |---|---|
-| nginx | Reverse proxy — routes `/api/*` to Django, everything else to Nuxt |
+| nginx | Reverse proxy — routes `/api/*` and `/django-admin/*` to Django, everything else to Nuxt |
 | django | Django 5 + DRF REST API, Gunicorn |
 | celery | Ingestion workers (extract → chunk → embed → upsert) |
 | celery-beat | Scheduled Git repo sync |
@@ -70,6 +71,13 @@ Log in at http://localhost with these credentials. The Admin section (visible on
 
 
 ## Development
+
+### API docs
+
+When `DEBUG=True`, the REST API schema is available at:
+
+- Swagger UI: http://localhost/api/schema/swagger-ui/
+- ReDoc: http://localhost/api/schema/redoc/
 
 ### Running backend tests
 
