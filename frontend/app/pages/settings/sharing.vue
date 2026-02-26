@@ -2,6 +2,7 @@
 definePageMeta({ middleware: 'auth', layout: 'admin' })
 const { $api } = useNuxtApp()
 const { setRefresh, clearRefresh } = useKeyboardShortcuts()
+const origin = useRequestURL().origin
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -131,6 +132,27 @@ function fmtDateTime(iso: string | null): string {
   })
 }
 
+async function copyToClipboard(text: string) {
+  try {
+    await navigator.clipboard.writeText(text)
+  } catch {
+    const el = document.createElement('textarea')
+    el.value = text
+    el.style.position = 'fixed'
+    el.style.opacity = '0'
+    document.body.appendChild(el)
+    el.select()
+    document.execCommand('copy')
+    document.body.removeChild(el)
+  }
+}
+
+const usageTabs = computed(() => [
+  { label: 'CURL', slot: 'curl' as const },
+  { label: 'WGET', slot: 'wget' as const },
+  { label: 'Python', slot: 'python' as const },
+])
+
 onMounted(() => setRefresh(refresh))
 onUnmounted(clearRefresh)
 </script>
@@ -174,7 +196,7 @@ onUnmounted(clearRefresh)
                 color="neutral"
                 variant="outline"
                 icon="i-lucide-copy"
-                @click="() => navigator.clipboard.writeText(newToken!)"
+                @click="copyToClipboard(newToken!)"
               />
             </div>
           </template>
@@ -250,18 +272,51 @@ onUnmounted(clearRefresh)
         <!-- Usage docs -->
         <div class="space-y-3 border-t border-default pt-6">
           <h2 class="text-sm font-semibold text-dimmed uppercase tracking-wider">How to use</h2>
-          <div class="space-y-2 text-sm text-muted">
-            <p>Send a <code class="text-xs font-mono bg-elevated px-1.5 py-0.5 rounded">POST</code> request to the external search endpoint:</p>
-            <pre class="text-xs font-mono bg-elevated p-4 rounded overflow-x-auto">POST /api/external/search/
-Authorization: Bearer &lt;your-token&gt;
-Content-Type: application/json
-
-{
+          <p class="text-sm text-muted">
+            Send a <code class="text-xs font-mono bg-elevated px-1.5 py-0.5 rounded">POST</code> request to
+            <code class="text-xs font-mono bg-elevated px-1.5 py-0.5 rounded">{{ origin }}/api/external/search/</code>
+            with your token in the <code class="text-xs font-mono bg-elevated px-1.5 py-0.5 rounded">Authorization</code> header:
+          </p>
+          <UTabs :items="usageTabs">
+            <template #curl>
+              <pre class="text-xs font-mono bg-elevated p-4 rounded overflow-x-auto mt-2">curl -X POST {{ origin }}/api/external/search/ \
+  -H "Authorization: Bearer &lt;your-token&gt;" \
+  -H "Content-Type: application/json" \
+  -d '{
   "query": "your search query",
   "kb_ids": ["optional-kb-uuid"],
   "limit": 10
-}</pre>
-          </div>
+}'</pre>
+            </template>
+            <template #wget>
+              <pre class="text-xs font-mono bg-elevated p-4 rounded overflow-x-auto mt-2">wget -qO- {{ origin }}/api/external/search/ \
+  --method=POST \
+  --header="Authorization: Bearer &lt;your-token&gt;" \
+  --header="Content-Type: application/json" \
+  --body-data='{
+  "query": "your search query",
+  "kb_ids": ["optional-kb-uuid"],
+  "limit": 10
+}'</pre>
+            </template>
+            <template #python>
+              <pre class="text-xs font-mono bg-elevated p-4 rounded overflow-x-auto mt-2">import requests
+
+response = requests.post(
+    "{{ origin }}/api/external/search/",
+    headers={
+        "Authorization": "Bearer &lt;your-token&gt;",
+        "Content-Type": "application/json",
+    },
+    json={
+        "query": "your search query",
+        "kb_ids": ["optional-kb-uuid"],  # optional
+        "limit": 10,
+    },
+)
+results = response.json()</pre>
+            </template>
+          </UTabs>
         </div>
 
       </UContainer>
