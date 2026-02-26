@@ -28,7 +28,7 @@ The application will be available at http://localhost.
 
 On first start, Django automatically runs migrations and initialises the Qdrant collection.
 
-## Generate required secrets
+### Generate required secrets
 
 **Django secret key:**
 ```bash
@@ -46,7 +46,7 @@ SECRET_KEY=<output of first command>
 STAXREAD_FERNET_KEY=<output of second command>
 ```
 
-## Create the first superuser
+### Create the first superuser
 
 ```bash
 docker compose exec django python manage.py createsuperuser
@@ -68,7 +68,10 @@ Log in at http://localhost with these credentials. The Admin section (visible on
 | minio | Object storage for PDF/EPUB files |
 | nuxt | Nuxt 3 SSR frontend |
 
-## Running backend tests
+
+## Development
+
+### Running backend tests
 
 ```bash
 docker compose exec django python -m pytest tests/
@@ -81,7 +84,7 @@ pip install -r requirements.txt
 python -m pytest tests/
 ```
 
-## Environment variables
+### Environment variables
 
 See `.env.example` for the full list. Key variables:
 
