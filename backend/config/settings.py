@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     "apps.ingestion",
     "apps.search",
     "apps.bookmarks",
+    "apps.tokens",
 ]
 
 MIDDLEWARE = [
