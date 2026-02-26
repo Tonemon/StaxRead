@@ -1,5 +1,10 @@
 import logging
 
+from django.conf import settings
+from qdrant_client.models import (
+    Filter, FieldCondition, MatchAny,
+    Prefetch, FusionQuery, Fusion, SparseVector,
+)
 from rest_framework import serializers, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -10,7 +15,6 @@ from apps.ingestion.qdrant_client import get_qdrant_client
 from apps.knowledge.models import KnowledgeBase, Chunk
 from apps.search.models import SearchHistory
 from apps.tokens.authentication import APITokenAuthentication
-from apps.tokens.models import APIToken
 
 logger = logging.getLogger(__name__)
 
@@ -69,19 +73,13 @@ class ExternalSearchView(APIView):
 
         dense_vec, sparse_vec = embed_query(query)
 
-        from qdrant_client.models import (
-            Filter, FieldCondition, MatchAny,
-            Prefetch, FusionQuery, Fusion, SparseVector,
-        )
-        from django.conf import settings as django_settings
-
         kb_filter = Filter(
             must=[FieldCondition(key="kb_id", match=MatchAny(any=effective_kb_ids))]
         )
 
         qdrant = get_qdrant_client()
         search_result = qdrant.query_points(
-            collection_name=django_settings.QDRANT_COLLECTION,
+            collection_name=settings.QDRANT_COLLECTION,
             prefetch=[
                 Prefetch(
                     query=dense_vec.tolist(),
