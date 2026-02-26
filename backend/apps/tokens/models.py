@@ -13,6 +13,9 @@ def _generate_token() -> str:
     return TOKEN_PREFIX + secrets.token_hex(32)
 
 
+# SHA-256 without a salt is acceptable here: tokens carry 256 bits of
+# entropy, making rainbow-table and brute-force attacks computationally
+# infeasible. This is the standard approach for high-entropy API tokens.
 def _hash_token(raw: str) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()
 
@@ -28,9 +31,9 @@ class APIToken(models.Model):
     description = models.TextField(blank=True)
 
     # Stored hash — raw token is NEVER saved
-    token_hash = models.CharField(max_length=64, unique=True, db_index=True)
-    # First 12 chars of raw token shown in UI for identification
-    token_prefix = models.CharField(max_length=16)
+    token_hash = models.CharField(max_length=64, unique=True)
+    # First 9 chars of raw token shown in UI for identification (stax_ + 4 hex)
+    token_prefix = models.CharField(max_length=9)
 
     # Scope: empty = all of user's accessible KBs; non-empty = specific KBs only
     knowledge_bases = models.ManyToManyField(
@@ -63,7 +66,7 @@ class APIToken(models.Model):
             name=name,
             description=description,
             token_hash=_hash_token(raw),
-            token_prefix=raw[:12],
+            token_prefix=raw[:9],
             expires_at=expires_at,
         )
         if knowledge_bases:
@@ -77,7 +80,7 @@ class APIToken(models.Model):
 
         token_hash = _hash_token(raw_token)
         try:
-            token = cls.objects.select_related("user").get(
+            token = cls.objects.select_related("user").prefetch_related("knowledge_bases").get(
                 token_hash=token_hash,
                 is_active=True,
             )
