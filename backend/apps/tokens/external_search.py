@@ -12,7 +12,7 @@ from rest_framework.views import APIView
 
 from apps.ingestion.embeddings import embed_query
 from apps.ingestion.qdrant_client import get_qdrant_client
-from apps.knowledge.models import KnowledgeBase, Chunk
+from apps.knowledge.models import KnowledgeBase, KBAccess, Chunk
 from apps.search.models import SearchHistory
 from apps.tokens.authentication import APITokenAuthentication
 
@@ -51,17 +51,20 @@ class ExternalSearchView(APIView):
 
         token: APIToken = request.auth
 
-        # Determine token-scoped KB IDs
+        # KBs the token owner currently has accepted access to
+        accessible_kb_ids = set(
+            str(pk) for pk in KnowledgeBase.objects.filter(
+                access_entries__user=request.user,
+                access_entries__status=KBAccess.Status.ACCEPTED,
+            ).values_list("id", flat=True)
+        )
+
+        # Determine token-scoped KB IDs, always intersected with current access
         scoped_kbs = token.knowledge_bases.values_list("id", flat=True)
         if scoped_kbs:
-            token_kb_ids = set(str(pk) for pk in scoped_kbs)
+            token_kb_ids = {str(pk) for pk in scoped_kbs} & accessible_kb_ids
         else:
-            # No explicit scope — all KBs the user can access
-            token_kb_ids = set(
-                str(pk) for pk in KnowledgeBase.objects.filter(
-                    access_entries__user=request.user
-                ).values_list("id", flat=True)
-            )
+            token_kb_ids = accessible_kb_ids
 
         if requested_kb_ids:
             effective_kb_ids = [kid for kid in requested_kb_ids if kid in token_kb_ids]
