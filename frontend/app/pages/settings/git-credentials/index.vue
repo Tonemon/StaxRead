@@ -1,6 +1,7 @@
 <script setup lang="ts">
-definePageMeta({ middleware: 'admin', layout: 'admin' })
+definePageMeta({ middleware: 'auth', layout: 'admin' })
 const { $api } = useNuxtApp()
+const { setRefresh, clearRefresh } = useKeyboardShortcuts()
 
 interface GitCredential { id: string; label: string; created_at: string }
 
@@ -14,6 +15,7 @@ const form = reactive({ label: '', pat: '' })
 const submitting = ref(false)
 
 async function createCredential() {
+  if (!form.label || !form.pat) return
   submitting.value = true
   try {
     await ($api as typeof $fetch)('/git-credentials/', { method: 'POST', body: { label: form.label, pat: form.pat } })
@@ -42,6 +44,9 @@ async function doDelete() {
 function onDeleteModalUpdate(open: boolean) {
   if (!open) deleteTargetId.value = null
 }
+
+onMounted(() => setRefresh(refresh))
+onUnmounted(clearRefresh)
 </script>
 
 <template>
@@ -59,8 +64,8 @@ function onDeleteModalUpdate(open: boolean) {
         <UModal v-model:open="showCreate" title="Add Git Credential">
           <template #body>
             <div class="space-y-3">
-              <UFormField label="Label"><UInput v-model="form.label" autofocus /></UFormField>
-              <UFormField label="Personal Access Token"><UInput v-model="form.pat" type="password" /></UFormField>
+              <UFormField label="Label"><UInput v-model="form.label" autofocus @keydown.enter="createCredential" /></UFormField>
+              <UFormField label="Personal Access Token"><UInput v-model="form.pat" type="password" @keydown.enter="createCredential" /></UFormField>
             </div>
           </template>
           <template #footer>

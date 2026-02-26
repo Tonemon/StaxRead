@@ -2,13 +2,23 @@
 const { logout } = useAuth()
 const authStore = useAuthStore()
 
-const navLinks = computed(() => [
-  { label: 'Knowledge Bases', to: '/admin/knowledge-bases', icon: 'i-lucide-book-open' },
-  { label: 'Git Credentials', to: '/admin/git-credentials', icon: 'i-lucide-key' },
-  ...(authStore.isSuperuser ? [{ label: 'Users', to: '/admin/users', icon: 'i-lucide-users' }] : []),
-])
+const navLinks = [
+  { label: 'Knowledge Bases', to: '/settings/knowledge-bases', icon: 'i-lucide-book-open' },
+  { label: 'Git Credentials', to: '/settings/git-credentials', icon: 'i-lucide-key' },
+  { label: 'Sharing', to: '/settings/sharing', icon: 'i-lucide-share-2' },
+  { label: 'Account', to: '/settings/account', icon: 'i-lucide-user-circle' },
+]
 
 const open = ref(false)
+
+const displayName = computed(() => {
+  const user = authStore.user
+  if (!user) return 'Account'
+  const d = user.greeting_display
+  if (d === 'full_name' && user.first_name && user.last_name) return `${user.first_name} ${user.last_name}`
+  if ((d === 'full_name' || d === 'first_name') && user.first_name) return user.first_name
+  return user.username
+})
 </script>
 
 <template>
@@ -24,7 +34,7 @@ const open = ref(false)
       <template #header="{ collapsed }">
         <NuxtLink to="/" class="flex items-end gap-0.5">
           <Logo class="h-8 w-auto shrink-0" />
-          <span v-if="!collapsed" class="text-xl font-bold text-highlighted">Admin</span>
+          <span v-if="!collapsed" class="text-xl font-bold text-highlighted">Settings</span>
         </NuxtLink>
       </template>
 
@@ -39,7 +49,7 @@ const open = ref(false)
       <template #footer="{ collapsed }">
         <UButton
           v-bind="{
-            label: collapsed ? undefined : (authStore.user?.username || 'Account'),
+            label: collapsed ? undefined : displayName,
             trailingIcon: collapsed ? undefined : 'i-lucide-log-out',
           }"
           color="neutral"

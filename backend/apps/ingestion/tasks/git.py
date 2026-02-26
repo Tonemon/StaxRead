@@ -110,7 +110,12 @@ def _ingest_file(source: Source, file_path: str, chunk_offset: int) -> int:
 
 @shared_task(bind=True, max_retries=0)
 def ingest_git(self, source_id: str) -> None:
-    source = Source.objects.get(pk=uuid.UUID(source_id))
+    try:
+        source = Source.objects.get(pk=uuid.UUID(source_id))
+    except Source.DoesNotExist:
+        logger.warning("Source %s was deleted before ingestion started, skipping.", source_id)
+        return
+
     source.status = Source.Status.PROCESSING
     source.error_message = ""
     source.save(update_fields=["status", "error_message"])
@@ -132,6 +137,9 @@ def ingest_git(self, source_id: str) -> None:
         source.save(update_fields=["status", "last_synced_at"])
 
     except Exception as exc:
+        if not Source.objects.filter(pk=source.pk).exists():
+            logger.warning("Source %s was deleted during ingestion, discarding.", source_id)
+            return
         logger.exception("Git ingestion failed for source %s", source_id)
         source.status = Source.Status.ERROR
         source.error_message = str(exc)

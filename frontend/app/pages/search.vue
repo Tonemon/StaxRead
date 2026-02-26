@@ -4,6 +4,7 @@ const route = useRoute()
 const router = useRouter()
 const store = useSearchStore()
 const { $api } = useNuxtApp()
+const { setRefresh, clearRefresh } = useKeyboardShortcuts()
 
 const query = ref((route.query.q as string) || '')
 const loading = ref(false)
@@ -11,12 +12,16 @@ const error = ref('')
 
 async function runSearch() {
   if (!query.value.trim()) return
+  if (store.noKbsSelected) {
+    error.value = 'Please select a knowledge base to search.'
+    return
+  }
   loading.value = true
   error.value = ''
   try {
     const data = await ($api as typeof $fetch)<{ results: typeof store.results; query: string }>(
       '/search/',
-      { method: 'POST', body: { query: query.value, kb_ids: store.activeKbIds } }
+      { method: 'POST', body: { query: query.value, kb_ids: store.searchKbIds } }
     )
     store.results = data.results
     store.lastQuery = query.value
@@ -28,6 +33,9 @@ async function runSearch() {
 }
 
 if (query.value) runSearch()
+
+onMounted(() => setRefresh(runSearch))
+onUnmounted(clearRefresh)
 </script>
 
 <template>

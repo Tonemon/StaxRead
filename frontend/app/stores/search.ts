@@ -12,9 +12,18 @@ export interface SearchResult {
 }
 
 export const useSearchStore = defineStore('search', () => {
-  const activeKbIds = useLocalStorage<string[]>('staxread_active_kb_ids', [])
+  // null = all KBs active (default); [] = explicitly none; [...] = specific subset
+  // Uses v2 key to avoid conflicts with old [] default stored in localStorage
+  const activeKbIds = useLocalStorage<string[] | null>('staxread_active_kb_ids_v2', null)
   const lastQuery = ref('')
   const results = ref<SearchResult[]>([])
 
-  return { activeKbIds, results, lastQuery }
+  const noKbsSelected = computed(
+    () => activeKbIds.value !== null && activeKbIds.value.length === 0,
+  )
+
+  // kb_ids to send to the backend: null → [] (backend treats as "all accessible")
+  const searchKbIds = computed(() => activeKbIds.value ?? [])
+
+  return { activeKbIds, results, lastQuery, noKbsSelected, searchKbIds }
 })

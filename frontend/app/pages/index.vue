@@ -3,24 +3,58 @@ definePageMeta({ middleware: 'auth' })
 const router = useRouter()
 const store = useSearchStore()
 const { $api } = useNuxtApp()
+const { setRefresh, clearRefresh, focusSearchFlag } = useKeyboardShortcuts()
+const { refreshKbList } = useKbList()
+const authStore = useAuthStore()
+
+const GREETINGS = ['Hello', 'Hi', 'Hey', 'Welcome back', 'Good to see you']
+const greeting = GREETINGS[Math.floor(Math.random() * GREETINGS.length)]
+
+const greetingText = computed(() => {
+  const user = authStore.user
+  if (!user?.show_greeting) return null
+  const display = user.greeting_display
+  if (display === 'full_name' && user.first_name && user.last_name) {
+    return `${greeting}, ${user.first_name} ${user.last_name}`
+  }
+  if ((display === 'full_name' || display === 'first_name') && user.first_name) {
+    return `${greeting}, ${user.first_name}`
+  }
+  return `${greeting}, ${user.username}`
+})
 
 const query = ref('')
 const loading = ref(false)
 
 interface BookmarkItem { id: string; chunk: string; chunk_text: string; query: string; note: string; category: string | null; created_at: string }
+interface Invitation { id: string; kb_id: string; kb_name: string; owner_username: string }
 
-const { data: bookmarks } = await useFetch<BookmarkItem[]>('/bookmarks/', {
+const { data: bookmarks, refresh: refreshBookmarks } = await useFetch<BookmarkItem[]>('/bookmarks/', {
   $fetch: $api as typeof $fetch,
   default: () => [] as BookmarkItem[],
 })
 
+const { data: invitations, refresh: refreshInvitations } = await useFetch<Invitation[]>('/kb-invitations/', {
+  $fetch: $api as typeof $fetch,
+  default: () => [] as Invitation[],
+})
+
+const { data: kbs, refresh: refreshKbs } = await useFetch<{ id: string }[]>('/knowledge-bases/', {
+  $fetch: $api as typeof $fetch,
+  default: () => [] as { id: string }[],
+})
+
+const typingQuery = computed(() => query.value.trim().length > 0)
+const noKbsWarning = computed(() => typingQuery.value && !kbs.value?.length)
+const noKbsSelectedWarning = computed(() => typingQuery.value && !!kbs.value?.length && store.noKbsSelected)
+
 async function search() {
-  if (!query.value.trim() || loading.value) return
+  if (!query.value.trim() || loading.value || store.noKbsSelected) return
   loading.value = true
   try {
     const data = await ($api as typeof $fetch)<{ results: typeof store.results; query: string }>(
       '/search/',
-      { method: 'POST', body: { query: query.value, kb_ids: store.activeKbIds } }
+      { method: 'POST', body: { query: query.value, kb_ids: store.searchKbIds } }
     )
     store.results = data.results
     store.lastQuery = query.value
@@ -40,6 +74,43 @@ function bookmarkLabel(item: BookmarkItem) {
 function bookmarkQuery(item: BookmarkItem) {
   return item.query || item.chunk_text
 }
+
+async function acceptInvitation(id: string) {
+  await ($api as typeof $fetch)(`/kb-invitations/${id}/accept/`, { method: 'POST' })
+  refreshInvitations()
+  refreshKbs()
+  refreshKbList()
+}
+
+async function declineInvitation(id: string) {
+  await ($api as typeof $fetch)(`/kb-invitations/${id}/decline/`, { method: 'POST' })
+  refreshInvitations()
+}
+
+const searchAreaRef = ref<HTMLElement | null>(null)
+
+function focusSearch() {
+  nextTick(() => {
+    searchAreaRef.value?.querySelector('textarea')?.focus()
+  })
+}
+
+watch(focusSearchFlag, (v) => {
+  if (v) {
+    focusSearchFlag.value = false
+    focusSearch()
+  }
+})
+
+onMounted(() => {
+  setRefresh(() => { refreshBookmarks(); refreshInvitations(); refreshKbs() })
+  if (focusSearchFlag.value) {
+    focusSearchFlag.value = false
+    focusSearch()
+  }
+})
+
+onUnmounted(clearRefresh)
 </script>
 
 <template>
@@ -51,23 +122,48 @@ function bookmarkQuery(item: BookmarkItem) {
     <template #body>
       <div class="flex flex-1">
         <UContainer class="flex-1 flex flex-col justify-center gap-4 sm:gap-6 py-8">
+          <p v-if="greetingText" class="text-sm text-dimmed">{{ greetingText }}</p>
+
           <h1 class="text-3xl sm:text-4xl text-highlighted font-bold">
             What are you looking for?
           </h1>
 
-          <UChatPrompt
-            v-model="query"
-            :status="loading ? 'streaming' : 'ready'"
-            variant="subtle"
-            placeholder="Search your knowledge bases..."
-            :ui="{ base: 'px-1.5' }"
-            @submit="search"
-          >
-            <template #footer>
-              <div />
-              <UChatPromptSubmit color="neutral" size="sm" :disabled="loading" />
-            </template>
-          </UChatPrompt>
+          <div ref="searchAreaRef">
+            <UChatPrompt
+              v-model="query"
+              :status="loading ? 'streaming' : 'ready'"
+              variant="subtle"
+              placeholder="Search your knowledge bases..."
+              :ui="{ base: 'px-1.5' }"
+              @submit="search"
+            >
+              <template #footer>
+                <div />
+                <UChatPromptSubmit color="neutral" size="sm" :disabled="loading" />
+              </template>
+            </UChatPrompt>
+          </div>
+
+          <p v-if="noKbsWarning" class="text-sm text-warning">
+            You have no knowledge bases. <NuxtLink to="/settings/knowledge-bases" class="underline hover:text-warning/80">Create one</NuxtLink> to start searching.
+          </p>
+          <p v-else-if="noKbsSelectedWarning" class="text-sm text-warning">
+            Please select a knowledge base to search.
+          </p>
+
+          <div v-if="invitations?.length" class="space-y-2">
+            <p class="text-xs font-semibold text-dimmed uppercase tracking-wider">Pending Knowledge Base Invitations</p>
+            <div v-for="inv in invitations" :key="inv.id" class="flex items-center justify-between gap-3 p-3 bg-default rounded-lg ring ring-default">
+              <div class="min-w-0">
+                <p class="text-sm font-medium text-highlighted">{{ inv.kb_name }}</p>
+                <p class="text-xs text-dimmed">Shared by {{ inv.owner_username }}</p>
+              </div>
+              <div class="flex gap-2 shrink-0">
+                <UButton size="xs" color="neutral" variant="outline" icon="i-lucide-check" @click="acceptInvitation(inv.id)">Accept</UButton>
+                <UButton size="xs" color="error" variant="ghost" icon="i-lucide-x" @click="declineInvitation(inv.id)">Decline</UButton>
+              </div>
+            </div>
+          </div>
 
           <div v-if="suggestionBookmarks.length" class="flex flex-wrap gap-2">
             <UButton

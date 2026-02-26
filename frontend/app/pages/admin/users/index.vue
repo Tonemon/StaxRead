@@ -1,6 +1,7 @@
 <script setup lang="ts">
-definePageMeta({ middleware: 'admin', layout: 'admin' })
+definePageMeta({ middleware: 'admin', layout: 'superadmin' })
 const { $api } = useNuxtApp()
+const { setRefresh, clearRefresh } = useKeyboardShortcuts()
 
 interface User { id: string; username: string; email: string; is_active: boolean; is_superuser: boolean; date_joined: string }
 
@@ -14,6 +15,7 @@ const form = reactive({ username: '', email: '', password: '', is_superuser: fal
 const submitting = ref(false)
 
 async function createUser() {
+  if (!form.username || !form.password) return
   submitting.value = true
   try {
     await ($api as typeof $fetch)('/auth/users/', { method: 'POST', body: { ...form } })
@@ -32,6 +34,9 @@ async function toggleActive(user: User) {
   await ($api as typeof $fetch)(`/auth/users/${user.id}/`, { method: 'PATCH', body: { is_active: !user.is_active } })
   refresh()
 }
+
+onMounted(() => setRefresh(refresh))
+onUnmounted(clearRefresh)
 </script>
 
 <template>
@@ -49,9 +54,9 @@ async function toggleActive(user: User) {
         <UModal v-model:open="showCreate" title="Create User">
           <template #body>
             <div class="space-y-3">
-              <UFormField label="Username"><UInput v-model="form.username" autofocus /></UFormField>
-              <UFormField label="Email"><UInput v-model="form.email" type="email" /></UFormField>
-              <UFormField label="Password"><UInput v-model="form.password" type="password" /></UFormField>
+              <UFormField label="Username"><UInput v-model="form.username" autofocus @keydown.enter="createUser" /></UFormField>
+              <UFormField label="Email"><UInput v-model="form.email" type="email" @keydown.enter="createUser" /></UFormField>
+              <UFormField label="Password"><UInput v-model="form.password" type="password" @keydown.enter="createUser" /></UFormField>
               <UFormField label="Superuser"><USwitch v-model="form.is_superuser" /></UFormField>
             </div>
           </template>

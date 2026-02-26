@@ -21,6 +21,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # Third-party
     "rest_framework",
+    "drf_spectacular",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
@@ -31,6 +32,7 @@ INSTALLED_APPS = [
     "apps.ingestion",
     "apps.search",
     "apps.bookmarks",
+    "apps.tokens",
 ]
 
 MIDDLEWARE = [
@@ -91,6 +93,7 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
 SIMPLE_JWT = {
@@ -101,10 +104,19 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
+SPECTACULAR_SETTINGS = {
+    "TITLE": "StaxRead API",
+    "DESCRIPTION": "Semantic search API for StaxRead knowledge bases.",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "COMPONENT_SPLIT_REQUEST": True,
+}
+
 CORS_ALLOWED_ORIGINS = env.list(
     "CORS_ALLOWED_ORIGINS", default=["http://localhost:3000"]
 )
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = env.bool("CORS_ALLOW_ALL_ORIGINS", default=False)
 
 QDRANT_URL = env("QDRANT_URL", default="http://localhost:6333")
 QDRANT_COLLECTION = "chunks"
