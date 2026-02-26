@@ -200,6 +200,11 @@ async function share() {
     shareError.value = 'Failed to share'
   }
 }
+
+async function removeMember(userId: string) {
+  await ($api as typeof $fetch)(`/knowledge-bases/${kbId}/unshare/`, { method: 'POST', body: { user_id: userId } })
+  refreshMembers()
+}
 </script>
 
 <template>
@@ -435,9 +440,18 @@ async function share() {
                 class="flex items-center justify-between text-sm py-1"
               >
                 <span class="text-default">{{ m.username }}</span>
-                <UBadge :color="m.status === 'accepted' ? 'success' : 'info'" variant="subtle" size="xs">
-                  {{ m.status === 'accepted' ? 'Accepted' : 'Invited' }}
-                </UBadge>
+                <div class="flex items-center gap-2">
+                  <UBadge :color="m.status === 'accepted' ? 'success' : 'info'" variant="subtle" size="xs">
+                    {{ m.status === 'accepted' ? 'Accepted' : 'Invited' }}
+                  </UBadge>
+                  <UButton
+                    icon="i-lucide-user-minus"
+                    size="xs"
+                    color="error"
+                    variant="ghost"
+                    @click="removeMember(m.user_id)"
+                  />
+                </div>
               </div>
             </div>
           </div>
