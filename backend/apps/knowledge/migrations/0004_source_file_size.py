@@ -4,7 +4,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('knowledge', '0001_initial'),
+        ('knowledge', '0003_kbaccess_status'),
     ]
 
     operations = [
