@@ -6,6 +6,7 @@ urlpatterns = [
     path("api/", include("apps.knowledge.urls")),
     path("api/", include("apps.search.urls")),
     path("api/", include("apps.bookmarks.urls")),
+    path("api/", include("apps.tokens.urls")),
 ]
 
 if settings.DEBUG:

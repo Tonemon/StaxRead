@@ -106,6 +106,7 @@ CORS_ALLOWED_ORIGINS = env.list(
     "CORS_ALLOWED_ORIGINS", default=["http://localhost:3000"]
 )
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = env.bool("CORS_ALLOW_ALL_ORIGINS", default=False)
 
 QDRANT_URL = env("QDRANT_URL", default="http://localhost:6333")
 QDRANT_COLLECTION = "chunks"
