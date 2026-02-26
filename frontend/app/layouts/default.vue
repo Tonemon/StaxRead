@@ -7,6 +7,15 @@ const { registerRefresh } = useKbList()
 
 const open = ref(false)
 
+const displayName = computed(() => {
+  const user = authStore.user
+  if (!user) return 'Account'
+  const d = user.greeting_display
+  if (d === 'full_name' && user.first_name && user.last_name) return `${user.first_name} ${user.last_name}`
+  if ((d === 'full_name' || d === 'first_name') && user.first_name) return user.first_name
+  return user.username
+})
+
 interface KB {
   id: string
   name: string
@@ -158,7 +167,7 @@ const kbItems = computed(() =>
           />
           <UButton
             v-bind="{
-              label: collapsed ? undefined : (authStore.user?.username || 'Account'),
+              label: collapsed ? undefined : displayName,
               trailingIcon: collapsed ? undefined : 'i-lucide-log-out',
             }"
             color="neutral"

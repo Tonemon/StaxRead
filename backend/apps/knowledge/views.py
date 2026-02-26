@@ -123,10 +123,11 @@ class SourceViewSet(ModelViewSet):
     serializer_class = SourceSerializer
 
     def get_queryset(self):
+        from django.db.models import Count
         accessible_kb_ids = KnowledgeBase.objects.filter(
             access_entries__user=self.request.user
         ).values_list("id", flat=True)
-        qs = Source.objects.filter(kb__in=accessible_kb_ids)
+        qs = Source.objects.filter(kb__in=accessible_kb_ids).annotate(chunk_count=Count("chunks"))
         kb_id = self.request.query_params.get("kb")
         if kb_id:
             qs = qs.filter(kb=kb_id)
@@ -156,7 +157,8 @@ class SourceViewSet(ModelViewSet):
                 tmp.close()
                 object_name = upload_file(source.pk, tmp.name, content_type_map[source_type])
                 source.storage_key = object_name
-                source.save(update_fields=["storage_key"])
+                source.file_size_bytes = file_obj.size
+                source.save(update_fields=["storage_key", "file_size_bytes"])
             finally:
                 if os.path.exists(tmp.name):
                     os.unlink(tmp.name)

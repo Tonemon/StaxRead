@@ -75,6 +75,7 @@ class Source(UUIDModel):
     )
     # For PDF/EPUB: MinIO object key; for Git: repo URL
     storage_key = models.TextField(blank=True)
+    file_size_bytes = models.PositiveBigIntegerField(null=True, blank=True)
     # Git-specific fields
     git_url = models.URLField(blank=True)
     git_credential = models.ForeignKey(

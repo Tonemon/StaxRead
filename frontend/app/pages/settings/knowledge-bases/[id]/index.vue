@@ -6,7 +6,12 @@ const kbId = route.params.id as string
 const { setRefresh, clearRefresh } = useKeyboardShortcuts()
 
 interface KB { id: string; name: string; description: string; owner_username: string }
-interface Source { id: string; title: string; source_type: string; status: string }
+interface Source {
+  id: string; title: string; source_type: string; status: string
+  file_size_bytes: number | null; chunk_count: number
+  created_at: string; updated_at: string; last_synced_at: string | null
+  error_message: string; git_url: string; git_branch: string
+}
 
 const { data: kb, refresh: refreshKb } = await useFetch<KB>(`/knowledge-bases/${kbId}/`, { $fetch: $api as typeof $fetch })
 const { data: sources, refresh: refreshSources } = await useFetch<Source[]>('/sources/', {
@@ -36,7 +41,7 @@ async function saveName() {
   editingName.value = false
   if (editNameValue.value === kb.value?.name || !editNameValue.value) return
   await ($api as typeof $fetch)(`/knowledge-bases/${kbId}/`, { method: 'PATCH', body: { name: editNameValue.value } })
-  if (kb.value) kb.value.name = editNameValue.value
+  refreshKb()
 }
 
 async function saveDescription() {
@@ -44,7 +49,7 @@ async function saveDescription() {
   editingDescription.value = false
   if (editDescValue.value === kb.value?.description) return
   await ($api as typeof $fetch)(`/knowledge-bases/${kbId}/`, { method: 'PATCH', body: { description: editDescValue.value } })
-  if (kb.value) kb.value.description = editDescValue.value
+  refreshKb()
 }
 
 function cancelEditName() {
@@ -144,6 +149,18 @@ const emptyLabel: Record<string, string> = {
   pdf: 'No PDF sources yet.',
   epub: 'No EPUB sources yet.',
   git: 'No Git repository sources yet.',
+}
+
+function fmtBytes(bytes: number | null): string {
+  if (bytes === null || bytes === undefined) return 'Unknown'
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function fmtDate(iso: string | null): string {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
 async function deleteSource(id: string) {
@@ -307,6 +324,42 @@ async function share() {
                     </td>
                     <td class="px-4 py-3 text-right">
                       <div class="flex items-center justify-end gap-1">
+                        <UPopover mode="hover">
+                          <UButton icon="i-lucide-info" size="xs" color="neutral" variant="ghost" />
+                          <template #content>
+                            <div class="p-3 space-y-1.5 text-xs min-w-52">
+                              <div class="flex justify-between gap-4">
+                                <span class="text-dimmed">Format</span>
+                                <span class="text-default font-medium uppercase">{{ source.source_type }}</span>
+                              </div>
+                              <div v-if="source.source_type !== 'git'" class="flex justify-between gap-4">
+                                <span class="text-dimmed">File size</span>
+                                <span class="text-default font-medium">{{ fmtBytes(source.file_size_bytes) }}</span>
+                              </div>
+                              <div class="flex justify-between gap-4">
+                                <span class="text-dimmed">Chunks</span>
+                                <span class="text-default font-medium">{{ source.chunk_count.toLocaleString() }}</span>
+                              </div>
+                              <div class="flex justify-between gap-4">
+                                <span class="text-dimmed">Added</span>
+                                <span class="text-default font-medium">{{ fmtDate(source.created_at) }}</span>
+                              </div>
+                              <template v-if="source.source_type === 'git'">
+                                <div class="flex justify-between gap-4">
+                                  <span class="text-dimmed">Branch</span>
+                                  <span class="text-default font-medium font-mono">{{ source.git_branch }}</span>
+                                </div>
+                                <div v-if="source.last_synced_at" class="flex justify-between gap-4">
+                                  <span class="text-dimmed">Last synced</span>
+                                  <span class="text-default font-medium">{{ fmtDate(source.last_synced_at) }}</span>
+                                </div>
+                              </template>
+                              <div v-if="source.status === 'error'" class="pt-1 border-t border-default">
+                                <p class="text-error text-xs">{{ source.error_message || 'Unknown error' }}</p>
+                              </div>
+                            </div>
+                          </template>
+                        </UPopover>
                         <UButton
                           v-if="source.source_type !== 'git' && source.status === 'ready'"
                           icon="i-lucide-download"

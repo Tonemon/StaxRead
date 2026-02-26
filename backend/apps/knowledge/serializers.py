@@ -49,11 +49,13 @@ class GitCredentialSerializer(serializers.ModelSerializer):
 
 
 class SourceSerializer(serializers.ModelSerializer):
+    chunk_count = serializers.IntegerField(read_only=True, default=0)
+
     class Meta:
         model = Source
         fields = [
             "id", "kb", "title", "source_type", "status",
-            "storage_key", "git_url", "git_credential", "git_branch",
-            "last_synced_at", "error_message", "created_at", "updated_at",
+            "storage_key", "file_size_bytes", "git_url", "git_credential", "git_branch",
+            "last_synced_at", "error_message", "chunk_count", "created_at", "updated_at",
         ]
-        read_only_fields = ["id", "status", "last_synced_at", "error_message", "created_at", "updated_at"]
+        read_only_fields = ["id", "status", "file_size_bytes", "last_synced_at", "error_message", "created_at", "updated_at"]
