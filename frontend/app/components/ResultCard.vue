@@ -26,7 +26,7 @@ const scorePercent = computed(() => Math.round(props.result.relevance_score * 10
       <div class="flex items-start justify-between gap-2">
         <div class="min-w-0">
           <NuxtLink
-            :to="`/documents/${result.source_id}`"
+            :to="`/documents/${result.source_id}?page=${result.metadata?.page_number ?? 1}`"
             class="font-medium text-sm hover:underline text-highlighted truncate block"
           >
             {{ result.source_title }}
