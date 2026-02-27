@@ -6,6 +6,7 @@ const navLinks = [
   { label: 'Knowledge Bases', to: '/settings/knowledge-bases', icon: 'i-lucide-book-open' },
   { label: 'Git Credentials', to: '/settings/git-credentials', icon: 'i-lucide-key' },
   { label: 'Sharing', to: '/settings/sharing', icon: 'i-lucide-share-2' },
+  { label: 'Teams', to: '/settings/teams', icon: 'i-lucide-users' },
   { label: 'Account', to: '/settings/account', icon: 'i-lucide-user-circle' },
 ]
 
