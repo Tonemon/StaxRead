@@ -13,6 +13,8 @@ from apps.ingestion.tasks.pdf import ingest_pdf
 from apps.ingestion.tasks.epub import ingest_epub
 from apps.ingestion.tasks.git import ingest_git
 from apps.ingestion.storage import upload_file, get_presigned_url
+from apps.teams.access import get_accessible_kbs, MANAGER_ROLES
+from apps.teams.models import TeamMembership
 
 User = get_user_model()
 
@@ -21,28 +23,23 @@ class KnowledgeBaseViewSet(ModelViewSet):
     serializer_class = KnowledgeBaseSerializer
 
     def get_queryset(self):
-        from apps.teams.access import get_accessible_kbs
         return get_accessible_kbs(self.request.user)
 
     def perform_create(self, serializer):
-        from apps.teams.models import TeamMembership
         team = serializer.validated_data.get("team")
         if team is not None:
             if not TeamMembership.objects.filter(
-                team=team, user=self.request.user, role__in=("manager", "admin", "owner")
+                team=team, user=self.request.user, role__in=MANAGER_ROLES
             ).exists():
                 from rest_framework.exceptions import PermissionDenied
                 raise PermissionDenied("You must be a Manager or above to create a team KB.")
         serializer.save(owner=self.request.user)
 
     def destroy(self, request, *args, **kwargs):
-        from apps.teams.models import TeamMembership
-        from rest_framework.response import Response
-        from rest_framework import status
         kb = self.get_object()
         if kb.team_id:
             if not TeamMembership.objects.filter(
-                team_id=kb.team_id, user=request.user, role__in=("manager", "admin", "owner")
+                team_id=kb.team_id, user=request.user, role__in=MANAGER_ROLES
             ).exists():
                 return Response(status=status.HTTP_403_FORBIDDEN)
         elif kb.owner != request.user:
@@ -138,7 +135,6 @@ class SourceViewSet(ModelViewSet):
 
     def get_queryset(self):
         from django.db.models import Count
-        from apps.teams.access import get_accessible_kbs
         accessible_kb_ids = get_accessible_kbs(self.request.user).values_list("id", flat=True)
         qs = Source.objects.filter(kb__in=accessible_kb_ids).annotate(chunk_count=Count("chunks"))
         kb_id = self.request.query_params.get("kb")

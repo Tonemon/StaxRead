@@ -57,7 +57,7 @@ class ExternalSearchView(APIView):
             all_team_kb_ids = set(
                 str(pk) for pk in KB.objects.filter(team_id=token.team_id).values_list("id", flat=True)
             )
-            scoped_kbs = token.knowledge_bases.values_list("id", flat=True)
+            scoped_kbs = list(token.knowledge_bases.values_list("id", flat=True))
             if scoped_kbs:
                 token_kb_ids = {str(pk) for pk in scoped_kbs} & all_team_kb_ids
             else:
@@ -68,7 +68,7 @@ class ExternalSearchView(APIView):
             accessible_kb_ids = set(
                 str(pk) for pk in get_accessible_kbs(request.user).values_list("id", flat=True)
             )
-            scoped_kbs = token.knowledge_bases.values_list("id", flat=True)
+            scoped_kbs = list(token.knowledge_bases.values_list("id", flat=True))
             if scoped_kbs:
                 token_kb_ids = {str(pk) for pk in scoped_kbs} & accessible_kb_ids
             else:
