@@ -1,5 +1,8 @@
+from datetime import timedelta
+
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import status, mixins
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
@@ -7,11 +10,13 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
 
-from apps.knowledge.models import GitCredential
+from apps.knowledge.models import GitCredential, KnowledgeBase
 from apps.knowledge.serializers import GitCredentialSerializer
 from apps.teams.models import Team, TeamMembership
 from apps.teams.permissions import ADMIN_ROLES, MANAGER_ROLES
 from apps.teams.serializers import TeamSerializer, TeamMembershipSerializer
+from apps.tokens.models import APIToken
+from apps.tokens.serializers import APITokenSerializer, APITokenCreateSerializer
 
 User = get_user_model()
 
@@ -208,4 +213,80 @@ class TeamGitCredentialViewSet(ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         self._check_membership(MANAGER_ROLES)
+        return super().destroy(request, *args, **kwargs)
+
+
+class TeamAPITokenViewSet(
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    GenericViewSet,
+):
+    permission_classes = [IsAuthenticated]
+    serializer_class = APITokenSerializer
+    http_method_names = ["get", "post", "patch", "delete", "head", "options"]
+    PATCH_ALLOWED_FIELDS = {"name", "description", "is_active"}
+
+    def _get_team(self):
+        return get_object_or_404(Team, pk=self.kwargs["team_pk"])
+
+    def _check_manager(self):
+        team = self._get_team()
+        if not TeamMembership.objects.filter(
+            team=team, user=self.request.user, role__in=MANAGER_ROLES
+        ).exists():
+            raise PermissionDenied()
+        return team
+
+    def get_queryset(self):
+        team_pk = self.kwargs["team_pk"]
+        if not TeamMembership.objects.filter(team_id=team_pk, user=self.request.user).exists():
+            raise PermissionDenied()
+        return APIToken.objects.filter(team_id=team_pk).prefetch_related("knowledge_bases")
+
+    def create(self, request, *args, **kwargs):
+        team = self._check_manager()
+        ser = APITokenSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        data = ser.validated_data
+        kb_ids = [str(uid) for uid in data.pop("kb_ids", [])]
+        expires_in_days = data.pop("expires_in_days", None)
+
+        kbs = []
+        if kb_ids:
+            kbs = list(KnowledgeBase.objects.filter(pk__in=kb_ids, team=team))
+            if len(kbs) != len(kb_ids):
+                return Response(
+                    {"kb_ids": "One or more KBs do not belong to this team."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        expires_at = timezone.now() + timedelta(days=expires_in_days) if expires_in_days else None
+        instance, raw_token = APIToken.create_token(
+            user=request.user,
+            name=data["name"],
+            description=data.get("description", ""),
+            knowledge_bases=kbs or None,
+            expires_at=expires_at,
+        )
+        instance.team = team
+        instance.save(update_fields=["team"])
+
+        out = APITokenCreateSerializer(instance).data
+        out["token"] = raw_token
+        return Response(out, status=status.HTTP_201_CREATED)
+
+    def partial_update(self, request, *args, **kwargs):
+        self._check_manager()
+        unexpected = set(request.data.keys()) - self.PATCH_ALLOWED_FIELDS
+        if unexpected:
+            return Response(
+                {"detail": f"Fields not allowed: {', '.join(sorted(unexpected))}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        self._check_manager()
         return super().destroy(request, *args, **kwargs)
