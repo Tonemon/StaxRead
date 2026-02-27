@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     "apps.search",
     "apps.bookmarks",
     "apps.tokens",
+    "apps.teams",
 ]
 
 MIDDLEWARE = [
