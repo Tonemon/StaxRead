@@ -13,15 +13,32 @@ class KnowledgeBase(UUIDModel):
         on_delete=models.CASCADE,
         related_name="owned_knowledge_bases",
     )
+    team = models.ForeignKey(
+        "teams.Team",
+        on_delete=models.CASCADE,
+        null=True, blank=True,
+        related_name="knowledge_bases",
+    )
 
     class Meta:
-        unique_together = [("name", "owner")]
         ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["name", "owner"],
+                condition=models.Q(team__isnull=True),
+                name="unique_personal_kb_name",
+            ),
+            models.UniqueConstraint(
+                fields=["name", "team"],
+                condition=models.Q(team__isnull=False),
+                name="unique_team_kb_name",
+            ),
+        ]
 
     def save(self, *args, **kwargs):
         is_new = self._state.adding
         super().save(*args, **kwargs)
-        if is_new:
+        if is_new and self.team_id is None:
             KBAccess.objects.create(kb=self, user=self.owner)
 
     def __str__(self) -> str:
@@ -123,6 +140,12 @@ class GitCredential(UUIDModel):
         related_name="git_credentials",
     )
     label = models.CharField(max_length=255)
+    team = models.ForeignKey(
+        "teams.Team",
+        on_delete=models.CASCADE,
+        null=True, blank=True,
+        related_name="git_credentials",
+    )
     pat_encrypted = models.TextField()
 
     class Meta:
