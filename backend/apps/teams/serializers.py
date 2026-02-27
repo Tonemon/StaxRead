@@ -4,8 +4,6 @@ from apps.teams.models import Team, TeamMembership
 
 User = get_user_model()
 
-ROLE_ORDER = ["guest", "member", "manager", "admin", "owner"]
-
 
 class TeamMembershipSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source="user.username", read_only=True)

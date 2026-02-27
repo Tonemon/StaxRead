@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.shortcuts import get_object_or_404
 from rest_framework import status, mixins
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -83,7 +84,7 @@ class TeamMemberViewSet(
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
 
     def _get_team(self):
-        return Team.objects.get(pk=self.kwargs["team_pk"])
+        return get_object_or_404(Team, pk=self.kwargs["team_pk"])
 
     def _caller_role(self, team):
         try:
@@ -99,6 +100,8 @@ class TeamMemberViewSet(
         return TeamMembership.objects.filter(team_id=team_pk).select_related("user")
 
     def get_object(self):
+        # Members are addressed by user PK (not membership PK) for URL simplicity.
+        # e.g. DELETE /teams/{team_pk}/members/{user_pk}/
         team = self._get_team()
         user_pk = self.kwargs["pk"]
         return TeamMembership.objects.get(team=team, user_id=user_pk)
@@ -114,10 +117,10 @@ class TeamMemberViewSet(
         user = ser.validated_data["user_id"]  # validate_user_id returns a User object
         role = ser.validated_data.get("role", "member")
 
-        if ROLE_ORDER.index(role) > ROLE_ORDER.index(caller_role):
-            return Response({"detail": "Cannot assign a role higher than your own."}, status=400)
         if role == "owner":
             return Response({"detail": "Use transfer-ownership to assign owner."}, status=400)
+        if ROLE_ORDER.index(role) > ROLE_ORDER.index(caller_role):
+            return Response({"detail": "Cannot assign a role higher than your own."}, status=400)
 
         membership, created = TeamMembership.objects.get_or_create(
             team=team, user=user,
@@ -137,6 +140,12 @@ class TeamMemberViewSet(
         new_role = request.data.get("role")
         if not new_role:
             return Response({"detail": "role is required."}, status=400)
+
+        # Validate role is a valid choice
+        valid_roles = [choice[0] for choice in TeamMembership.ROLE_CHOICES]
+        if new_role not in valid_roles:
+            return Response({"role": [f'"{new_role}" is not a valid choice.']}, status=400)
+
         if new_role == "owner":
             return Response({"detail": "Use transfer-ownership to assign owner."}, status=400)
         if ROLE_ORDER.index(new_role) > ROLE_ORDER.index(caller_role):
