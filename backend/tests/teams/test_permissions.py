@@ -56,3 +56,11 @@ class TestTeamPermissions:
         perm = IsTeamAdmin()
         view = type("V", (), {"kwargs": {"pk": str(team.pk)}})()
         assert not perm.has_permission(self._make_request(bob), view)
+
+    def test_manager_passes_with_team_pk_kwarg(self, alice, bob):
+        from apps.teams.permissions import IsTeamManager
+        team = self._setup(alice, bob, "owner", "manager")
+        perm = IsTeamManager()
+        # nested router uses team_pk instead of pk
+        view = type("V", (), {"kwargs": {"team_pk": str(team.pk)}})()
+        assert perm.has_permission(self._make_request(bob), view)

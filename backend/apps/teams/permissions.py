@@ -13,6 +13,8 @@ def _get_team_pk(view):
 class IsTeamMember(BasePermission):
     """User has any membership in the team."""
     def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
         team_pk = _get_team_pk(view)
         if not team_pk:
             return False
@@ -24,6 +26,8 @@ class IsTeamMember(BasePermission):
 class IsTeamManager(BasePermission):
     """User is Manager, Admin, or Owner of the team."""
     def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
         team_pk = _get_team_pk(view)
         if not team_pk:
             return False
@@ -35,6 +39,8 @@ class IsTeamManager(BasePermission):
 class IsTeamAdmin(BasePermission):
     """User is Admin or Owner of the team."""
     def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
         team_pk = _get_team_pk(view)
         if not team_pk:
             return False
@@ -46,6 +52,8 @@ class IsTeamAdmin(BasePermission):
 class IsTeamOwner(BasePermission):
     """User is Owner of the team."""
     def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
         team_pk = _get_team_pk(view)
         if not team_pk:
             return False
