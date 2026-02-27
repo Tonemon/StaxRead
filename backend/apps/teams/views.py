@@ -2,10 +2,13 @@ from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from rest_framework import status, mixins
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
 
+from apps.knowledge.models import GitCredential
+from apps.knowledge.serializers import GitCredentialSerializer
 from apps.teams.models import Team, TeamMembership
 from apps.teams.permissions import ADMIN_ROLES, MANAGER_ROLES
 from apps.teams.serializers import TeamSerializer, TeamMembershipSerializer
@@ -171,3 +174,38 @@ class TeamMemberViewSet(
 
         membership.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class TeamGitCredentialViewSet(ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = GitCredentialSerializer
+    http_method_names = ["get", "post", "patch", "delete", "head", "options"]
+
+    def _get_team(self):
+        return get_object_or_404(Team, pk=self.kwargs["team_pk"])
+
+    def _check_membership(self, min_roles):
+        team = self._get_team()
+        if not TeamMembership.objects.filter(
+            team=team, user=self.request.user, role__in=min_roles
+        ).exists():
+            raise PermissionDenied()
+        return team
+
+    def get_queryset(self):
+        team_pk = self.kwargs["team_pk"]
+        if not TeamMembership.objects.filter(team_id=team_pk, user=self.request.user).exists():
+            raise PermissionDenied()
+        return GitCredential.objects.filter(team_id=team_pk)
+
+    def perform_create(self, serializer):
+        team = self._check_membership(MANAGER_ROLES)
+        serializer.save(user=self.request.user, team=team)
+
+    def update(self, request, *args, **kwargs):
+        self._check_membership(MANAGER_ROLES)
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        self._check_membership(MANAGER_ROLES)
+        return super().destroy(request, *args, **kwargs)
