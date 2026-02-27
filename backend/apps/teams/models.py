@@ -1,15 +1,13 @@
-import uuid
 from django.conf import settings
 from django.db import models
 
+from apps.common.models import UUIDModel
 
-class Team(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+class Team(UUIDModel):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     icon_url = models.URLField(blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ["name"]
@@ -20,8 +18,10 @@ class Team(models.Model):
     def save(self, *args, **kwargs):
         created_by = kwargs.pop("created_by", None)
         is_new = self._state.adding
+        if is_new and created_by is None:
+            raise ValueError("created_by is required when creating a Team. Use Team.create().")
         super().save(*args, **kwargs)
-        if is_new and created_by:
+        if is_new:
             TeamMembership.objects.create(team=self, user=created_by, role="owner")
 
     @classmethod
@@ -32,7 +32,7 @@ class Team(models.Model):
         return team
 
 
-class TeamMembership(models.Model):
+class TeamMembership(UUIDModel):
     ROLE_CHOICES = [
         ("guest", "Guest"),
         ("member", "Member"),
@@ -41,7 +41,6 @@ class TeamMembership(models.Model):
         ("owner", "Owner"),
     ]
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="memberships")
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="team_memberships"
