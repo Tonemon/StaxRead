@@ -19,14 +19,23 @@ const displayName = computed(() => {
 interface KB {
   id: string
   name: string
+  team: string | null
 }
+
+interface Team { id: string; name: string; icon_url: string; my_role: string }
 
 const { data: kbs, refresh: refreshKbs } = await useFetch<KB[]>('/knowledge-bases/', {
   $fetch: $api as typeof $fetch,
   default: () => [] as KB[],
 })
 
+const { data: teams, refresh: refreshTeams } = await useFetch<Team[]>('/teams/', {
+  $fetch: $api as typeof $fetch,
+  default: () => [] as Team[],
+})
+
 registerRefresh(refreshKbs)
+registerRefresh(refreshTeams)
 
 // When new KBs appear (e.g. after accepting an invitation), auto-add them to the
 // active list so they are searched immediately. Only applies when the user has an
@@ -80,14 +89,35 @@ const navItems = computed(() => [
   { label: 'Settings', to: '/settings/knowledge-bases', icon: 'i-lucide-settings' },
 ])
 
-const kbItems = computed(() =>
-  (kbs.value || []).map(kb => ({
-    id: kb.id,
-    label: kb.name,
-    slot: 'kb' as const,
-    icon: 'i-lucide-database',
+// ── Collapsed section state ─────────────────────────────────────────────────
+
+const collapsedSections = ref<Record<string, boolean>>({})
+
+function isSectionCollapsed(key: string) {
+  return collapsedSections.value[key] ?? false
+}
+
+function toggleSection(key: string) {
+  collapsedSections.value[key] = !isSectionCollapsed(key)
+}
+
+// ── Grouped KB helpers ───────────────────────────────────────────────────────
+
+const personalKbs = computed(() =>
+  (kbs.value ?? []).filter(kb => !kb.team).map(kb => ({
+    id: kb.id, label: kb.name, slot: 'kb' as const, icon: 'i-lucide-database',
   }))
 )
+
+function teamKbs(teamId: string) {
+  return (kbs.value ?? []).filter(kb => kb.team === teamId).map(kb => ({
+    id: kb.id, label: kb.name, slot: 'kb' as const, icon: 'i-lucide-database',
+  }))
+}
+
+function isTeamManager(role: string) {
+  return ['manager', 'admin', 'owner'].includes(role)
+}
 </script>
 
 <template>
@@ -114,40 +144,81 @@ const kbItems = computed(() =>
           orientation="vertical"
         />
 
-        <template v-if="!collapsed && kbItems.length">
-          <p class="px-3 mt-4 text-xs font-semibold text-dimmed uppercase tracking-wider mb-1">
-            Knowledge Bases
-          </p>
-
-          <!-- "All knowledge bases" master toggle — only shown when more than one KB -->
-          <div
-            v-if="kbs && kbs.length > 1"
-            class="flex items-center gap-2 px-3 py-1.5 cursor-pointer select-none"
-            @click.stop="toggleAll(!allActive)"
-          >
-            <USwitch
-              :model-value="allActive"
-              size="xs"
-              @update:model-value="toggleAll"
-              @click.stop
-            />
-            <span class="text-sm text-muted">All knowledge bases</span>
+        <template v-if="!collapsed">
+          <!-- Personal section -->
+          <div class="mt-4">
+            <div
+              class="flex items-center justify-between px-3 mb-1 cursor-pointer select-none"
+              @click="toggleSection('personal')"
+            >
+              <p class="text-xs font-semibold text-dimmed uppercase tracking-wider">Personal</p>
+              <UIcon
+                :name="isSectionCollapsed('personal') ? 'i-lucide-chevron-right' : 'i-lucide-chevron-down'"
+                class="size-3 text-dimmed"
+              />
+            </div>
+            <template v-if="!isSectionCollapsed('personal') && personalKbs.length">
+              <div
+                v-if="personalKbs.length > 1"
+                class="flex items-center gap-2 px-3 py-1.5 cursor-pointer select-none"
+                @click.stop="toggleAll(!allActive)"
+              >
+                <USwitch :model-value="allActive" size="xs" @update:model-value="toggleAll" @click.stop />
+                <span class="text-sm text-muted">All knowledge bases</span>
+              </div>
+              <UNavigationMenu :items="personalKbs" orientation="vertical" :ui="{ link: 'overflow-hidden' }">
+                <template #kb-leading="{ item }">
+                  <USwitch
+                    :model-value="isKbActive((item as any).id)"
+                    size="xs"
+                    @update:model-value="(val: boolean) => toggleKb((item as any).id, val)"
+                    @click.stop.prevent
+                  />
+                </template>
+              </UNavigationMenu>
+            </template>
           </div>
 
-          <UNavigationMenu
-            :items="kbItems"
-            orientation="vertical"
-            :ui="{ link: 'overflow-hidden' }"
-          >
-            <template #kb-leading="{ item }">
-              <USwitch
-                :model-value="isKbActive((item as any).id)"
-                size="xs"
-                @update:model-value="(val: boolean) => toggleKb((item as any).id, val)"
-                @click.stop.prevent
-              />
+          <!-- Team sections -->
+          <div v-for="team in teams" :key="team.id" class="mt-4">
+            <div
+              class="flex items-center justify-between px-3 mb-1 cursor-pointer select-none group"
+              @click="toggleSection(team.id)"
+            >
+              <p class="text-xs font-semibold text-dimmed uppercase tracking-wider truncate">{{ team.name }}</p>
+              <div class="flex items-center gap-1 shrink-0">
+                <NuxtLink
+                  v-if="isTeamManager(team.my_role)"
+                  :to="`/settings/teams/${team.id}/general`"
+                  class="opacity-0 group-hover:opacity-100 transition-opacity"
+                  @click.stop
+                >
+                  <UIcon name="i-lucide-settings" class="size-3 text-dimmed hover:text-default" />
+                </NuxtLink>
+                <UIcon
+                  :name="isSectionCollapsed(team.id) ? 'i-lucide-chevron-right' : 'i-lucide-chevron-down'"
+                  class="size-3 text-dimmed"
+                />
+              </div>
+            </div>
+            <template v-if="!isSectionCollapsed(team.id)">
+              <UNavigationMenu
+                :items="teamKbs(team.id)"
+                orientation="vertical"
+                :ui="{ link: 'overflow-hidden' }"
+              >
+                <template #kb-leading="{ item }">
+                  <USwitch
+                    :model-value="isKbActive((item as any).id)"
+                    size="xs"
+                    @update:model-value="(val: boolean) => toggleKb((item as any).id, val)"
+                    @click.stop.prevent
+                  />
+                </template>
+              </UNavigationMenu>
+              <p v-if="!teamKbs(team.id).length" class="px-3 py-1.5 text-xs text-dimmed italic">No knowledge bases</p>
             </template>
-          </UNavigationMenu>
+          </div>
         </template>
       </template>
 
