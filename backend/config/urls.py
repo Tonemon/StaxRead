@@ -8,6 +8,7 @@ urlpatterns = [
     path("api/", include("apps.search.urls")),
     path("api/", include("apps.bookmarks.urls")),
     path("api/", include("apps.tokens.urls")),
+    path("api/", include("apps.teams.urls")),
     # OpenAPI schema + interactive docs (public — no auth required)
     path("api/schema/", SpectacularAPIView.as_view(permission_classes=[]), name="schema"),
     path("api/schema/swagger-ui/", SpectacularSwaggerView.as_view(url_name="schema", permission_classes=[]), name="swagger-ui"),
