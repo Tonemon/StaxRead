@@ -160,7 +160,7 @@ onUnmounted(clearRefresh)
   </UModal>
 
   <!-- Edit modal -->
-  <UModal :open="!!editTarget" title="Edit User" @update:open="if (!$event) editTarget = null">
+  <UModal :open="!!editTarget" title="Edit User" @update:open="(v) => { if (!v) editTarget = null }">
     <template #body>
       <div class="space-y-4">
         <p class="text-xs font-semibold text-dimmed uppercase tracking-wider">Account</p>
@@ -201,7 +201,7 @@ onUnmounted(clearRefresh)
   </UModal>
 
   <!-- Delete confirm modal -->
-  <UModal :open="!!deleteTargetId" title="Delete User" @update:open="if (!$event) deleteTargetId = null">
+  <UModal :open="!!deleteTargetId" title="Delete User" @update:open="(v) => { if (!v) deleteTargetId = null }">
     <template #body>
       <p class="text-sm text-muted">Are you sure you want to delete this user? This cannot be undone.</p>
     </template>
