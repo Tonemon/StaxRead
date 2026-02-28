@@ -6,6 +6,7 @@ const { setRefresh, clearRefresh } = useKeyboardShortcuts()
 
 interface KB { id: string; name: string; description: string; owner_username: string; created_at: string }
 interface Invitation { id: string; kb_id: string; kb_name: string; kb_description: string; owner_username: string }
+interface Team { id: string; name: string; my_role: string }
 
 const { data: kbs, refresh } = await useFetch<KB[]>('/knowledge-bases/', {
   $fetch: $api as typeof $fetch,
@@ -17,14 +18,34 @@ const { data: invitations, refresh: refreshInvitations } = await useFetch<Invita
   default: () => [] as Invitation[],
 })
 
+const { data: teams } = await useFetch<Team[]>('/teams/', {
+  $fetch: $api as typeof $fetch,
+  default: () => [] as Team[],
+})
+
+const MANAGER_ROLES = ['manager', 'admin', 'owner']
+
+const locationOptions = computed(() => {
+  const opts = [{ label: 'Personal', value: '' }]
+  for (const t of (teams.value || [])) {
+    if (MANAGER_ROLES.includes(t.my_role)) {
+      opts.push({ label: t.name, value: t.id })
+    }
+  }
+  return opts
+})
+
 const showCreate = ref(false)
-const form = reactive({ name: '', description: '' })
+const form = reactive({ name: '', description: '', team_id: '' })
 
 async function createKB() {
   if (!form.name) return
-  await ($api as typeof $fetch)('/knowledge-bases/', { method: 'POST', body: { name: form.name, description: form.description } })
+  const body: Record<string, unknown> = { name: form.name, description: form.description }
+  if (form.team_id) body.team = form.team_id
+  await ($api as typeof $fetch)('/knowledge-bases/', { method: 'POST', body })
   form.name = ''
   form.description = ''
+  form.team_id = ''
   showCreate.value = false
   refresh()
 }
@@ -87,6 +108,9 @@ onUnmounted(clearRefresh)
             <div class="space-y-3">
               <UFormField label="Name"><UInput v-model="form.name" autofocus @keydown.enter="createKB" /></UFormField>
               <UFormField label="Description"><UTextarea v-model="form.description" :rows="2" /></UFormField>
+              <UFormField v-if="locationOptions.length > 1" label="Location">
+                <USelectMenu v-model="form.team_id" :items="locationOptions" value-key="value" class="w-full" />
+              </UFormField>
             </div>
           </template>
           <template #footer>
