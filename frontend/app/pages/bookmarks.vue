@@ -37,8 +37,12 @@ async function createCategory() {
   refreshCategories()
 }
 
-async function deleteCategory(id: string) {
-  await ($api as typeof $fetch)(`/bookmark-categories/${id}/`, { method: 'DELETE' })
+const deleteCategoryTarget = ref<Category | null>(null)
+
+async function confirmDeleteCategory() {
+  if (!deleteCategoryTarget.value) return
+  await ($api as typeof $fetch)(`/bookmark-categories/${deleteCategoryTarget.value.id}/`, { method: 'DELETE' })
+  deleteCategoryTarget.value = null
   refreshCategories()
   refreshBookmarks()
 }
@@ -87,7 +91,7 @@ onUnmounted(clearRefresh)
         <div v-for="cat in categories" :key="cat.id" class="space-y-2">
           <div class="flex items-center justify-between">
             <p class="text-xs font-semibold text-dimmed uppercase tracking-wider">{{ cat.name }}</p>
-            <UButton size="xs" variant="ghost" color="error" icon="i-lucide-trash" @click="deleteCategory(cat.id)" />
+            <UButton size="xs" variant="ghost" color="error" icon="i-lucide-trash" @click="deleteCategoryTarget = cat" />
           </div>
           <div v-if="bookmarksByCategory(cat.id).length" class="space-y-2">
             <div v-for="bm in bookmarksByCategory(cat.id)" :key="bm.id" class="flex items-start justify-between gap-2 p-3 bg-default rounded-lg ring ring-default">
@@ -111,4 +115,21 @@ onUnmounted(clearRefresh)
       </UContainer>
     </template>
   </UDashboardPanel>
+
+  <UModal
+    :open="!!deleteCategoryTarget"
+    title="Delete Category"
+    @update:open="(v) => { if (!v) deleteCategoryTarget = null }"
+  >
+    <template #body>
+      <p class="text-sm text-muted">
+        Are you sure you want to delete <span class="font-medium text-highlighted">{{ deleteCategoryTarget?.name }}</span>?
+        Existing bookmarks will not be removed, but they will lose their category.
+      </p>
+    </template>
+    <template #footer>
+      <UButton color="error" @click="confirmDeleteCategory">Delete</UButton>
+      <UButton color="neutral" variant="ghost" @click="deleteCategoryTarget = null">Cancel</UButton>
+    </template>
+  </UModal>
 </template>
