@@ -5,7 +5,7 @@ const authStore = useAuthStore()
 const { setRefresh, clearRefresh } = useKeyboardShortcuts()
 
 interface KB { id: string; name: string; description: string; owner_username: string; created_at: string; team: string | null }
-interface Invitation { id: string; kb_id: string; kb_name: string; kb_description: string; owner_username: string }
+interface Invitation { id: string; kb_id: string; kb_name: string; kb_description: string; owner_username: string; kb_team_name: string | null }
 interface Team { id: string; name: string; my_role: string }
 
 const { data: kbs, refresh } = await useFetch<KB[]>('/knowledge-bases/', {
@@ -146,7 +146,10 @@ onUnmounted(clearRefresh)
           <div v-for="inv in invitations" :key="inv.id" class="flex items-center justify-between gap-3 p-4 bg-default rounded-lg ring ring-default">
             <div class="min-w-0">
               <p class="font-medium text-highlighted">{{ inv.kb_name }}</p>
-              <p class="text-xs text-dimmed mt-0.5">Shared by {{ inv.owner_username }}</p>
+              <p class="text-xs text-dimmed mt-0.5">
+                <template v-if="inv.kb_team_name">Team knowledge base &middot; {{ inv.kb_team_name }}</template>
+                <template v-else>Shared by {{ inv.owner_username }}</template>
+              </p>
               <p v-if="inv.kb_description" class="text-sm text-muted mt-1">{{ inv.kb_description }}</p>
             </div>
             <div class="flex gap-2 shrink-0">
