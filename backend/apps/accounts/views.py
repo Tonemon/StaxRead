@@ -16,6 +16,22 @@ class UserViewSet(ModelViewSet):
     serializer_class = UserSerializer
     permission_classes = [IsSuperuser]
 
+    def perform_update(self, serializer):
+        user = self.get_object()
+        was_superuser = user.is_superuser
+        updated = serializer.save()
+        if was_superuser and not updated.is_superuser:
+            self._blacklist_all_tokens(updated)
+
+    @staticmethod
+    def _blacklist_all_tokens(user):
+        from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
+        tokens = OutstandingToken.objects.filter(user=user)
+        BlacklistedToken.objects.bulk_create(
+            [BlacklistedToken(token=t) for t in tokens],
+            ignore_conflicts=True,
+        )
+
 
 class MeView(APIView):
     permission_classes = [IsAuthenticated]
