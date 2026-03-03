@@ -94,9 +94,9 @@ class TestTeamMembers:
     def test_admin_can_change_role(self, alice_client, alice, bob):
         from apps.teams.models import Team, TeamMembership
         team = Team.create(name="Eng", created_by=alice)
-        TeamMembership.objects.create(team=team, user=bob, role="member")
+        membership = TeamMembership.objects.create(team=team, user=bob, role="member")
         resp = alice_client.patch(
-            reverse("team-members-detail", kwargs={"team_pk": str(team.pk), "pk": str(bob.pk)}),
+            reverse("team-members-detail", kwargs={"team_pk": str(team.pk), "pk": str(membership.pk)}),
             {"role": "manager"}, format="json"
         )
         assert resp.status_code == 200
@@ -106,11 +106,11 @@ class TestTeamMembers:
         from apps.teams.models import Team, TeamMembership
         team = Team.create(name="Eng", created_by=alice)
         TeamMembership.objects.create(team=team, user=bob, role="admin")
-        TeamMembership.objects.create(team=team, user=carol, role="member")
+        carol_membership = TeamMembership.objects.create(team=team, user=carol, role="member")
         bob_client = APIClient()
         bob_client.force_authenticate(user=bob)
         resp = bob_client.patch(
-            reverse("team-members-detail", kwargs={"team_pk": str(team.pk), "pk": str(carol.pk)}),
+            reverse("team-members-detail", kwargs={"team_pk": str(team.pk), "pk": str(carol_membership.pk)}),
             {"role": "owner"}, format="json"
         )
         assert resp.status_code == 400

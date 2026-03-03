@@ -108,11 +108,8 @@ class TeamMemberViewSet(
         return TeamMembership.objects.filter(team_id=team_pk).select_related("user")
 
     def get_object(self):
-        # Members are addressed by user PK (not membership PK) for URL simplicity.
-        # e.g. DELETE /teams/{team_pk}/members/{user_pk}/
         team = self._get_team()
-        user_pk = self.kwargs["pk"]
-        return TeamMembership.objects.get(team=team, user_id=user_pk)
+        return get_object_or_404(TeamMembership, pk=self.kwargs["pk"], team=team)
 
     def create(self, request, *args, **kwargs):
         team = self._get_team()
