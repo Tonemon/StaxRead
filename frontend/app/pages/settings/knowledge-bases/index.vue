@@ -4,27 +4,56 @@ const { $api } = useNuxtApp()
 const authStore = useAuthStore()
 const { setRefresh, clearRefresh } = useKeyboardShortcuts()
 
-interface KB { id: string; name: string; description: string; owner_username: string; created_at: string }
-interface Invitation { id: string; kb_id: string; kb_name: string; kb_description: string; owner_username: string }
+interface KB { id: string; name: string; description: string; owner_username: string; created_at: string; team: string | null }
+interface Invitation { id: string; kb_id: string; kb_name: string; kb_description: string; owner_username: string; kb_team_name: string | null }
+interface Team { id: string; name: string; my_role: string }
 
 const { data: kbs, refresh } = await useFetch<KB[]>('/knowledge-bases/', {
   $fetch: $api as typeof $fetch,
   default: () => [] as KB[],
 })
 
+const personalKbs = computed(() => (kbs.value ?? []).filter(kb => kb.team === null))
+
+const teamKbGroups = computed(() =>
+  (teams.value ?? [])
+    .map(team => ({ team, kbs: (kbs.value ?? []).filter(kb => kb.team === team.id) }))
+    .filter(group => group.kbs.length > 0)
+)
+
 const { data: invitations, refresh: refreshInvitations } = await useFetch<Invitation[]>('/kb-invitations/', {
   $fetch: $api as typeof $fetch,
   default: () => [] as Invitation[],
 })
 
+const { data: teams } = await useFetch<Team[]>('/teams/', {
+  $fetch: $api as typeof $fetch,
+  default: () => [] as Team[],
+})
+
+const MANAGER_ROLES = ['manager', 'admin', 'owner']
+
+const locationOptions = computed(() => {
+  const opts = [{ label: 'Personal', value: 'personal' }]
+  for (const t of (teams.value || [])) {
+    if (MANAGER_ROLES.includes(t.my_role)) {
+      opts.push({ label: t.name, value: t.id })
+    }
+  }
+  return opts
+})
+
 const showCreate = ref(false)
-const form = reactive({ name: '', description: '' })
+const form = reactive({ name: '', description: '', team_id: 'personal' })
 
 async function createKB() {
   if (!form.name) return
-  await ($api as typeof $fetch)('/knowledge-bases/', { method: 'POST', body: { name: form.name, description: form.description } })
+  const body: Record<string, unknown> = { name: form.name, description: form.description }
+  if (form.team_id !== 'personal') body.team = form.team_id
+  await ($api as typeof $fetch)('/knowledge-bases/', { method: 'POST', body })
   form.name = ''
   form.description = ''
+  form.team_id = 'personal'
   showCreate.value = false
   refresh()
 }
@@ -33,7 +62,8 @@ const deleteTargetId = ref<string | null>(null)
 
 const deleteTargetIsShared = computed(() => {
   const kb = kbs.value?.find(k => k.id === deleteTargetId.value)
-  return kb ? kb.owner_username !== authStore.user?.username : false
+  if (!kb || kb.team !== null) return false
+  return kb.owner_username !== authStore.user?.username
 })
 
 function confirmDelete(id: string) {
@@ -87,6 +117,9 @@ onUnmounted(clearRefresh)
             <div class="space-y-3">
               <UFormField label="Name"><UInput v-model="form.name" autofocus @keydown.enter="createKB" /></UFormField>
               <UFormField label="Description"><UTextarea v-model="form.description" :rows="2" /></UFormField>
+              <UFormField v-if="locationOptions.length > 1" label="Location">
+                <USelectMenu v-model="form.team_id" :items="locationOptions" value-key="value" class="w-full" />
+              </UFormField>
             </div>
           </template>
           <template #footer>
@@ -113,7 +146,10 @@ onUnmounted(clearRefresh)
           <div v-for="inv in invitations" :key="inv.id" class="flex items-center justify-between gap-3 p-4 bg-default rounded-lg ring ring-default">
             <div class="min-w-0">
               <p class="font-medium text-highlighted">{{ inv.kb_name }}</p>
-              <p class="text-xs text-dimmed mt-0.5">Shared by {{ inv.owner_username }}</p>
+              <p class="text-xs text-dimmed mt-0.5">
+                <template v-if="inv.kb_team_name">Team knowledge base &middot; {{ inv.kb_team_name }}</template>
+                <template v-else>Shared by {{ inv.owner_username }}</template>
+              </p>
               <p v-if="inv.kb_description" class="text-sm text-muted mt-1">{{ inv.kb_description }}</p>
             </div>
             <div class="flex gap-2 shrink-0">
@@ -123,8 +159,10 @@ onUnmounted(clearRefresh)
           </div>
         </div>
 
+        <!-- Personal KBs -->
         <div class="space-y-2">
-          <div v-for="kb in kbs" :key="kb.id" class="flex items-center justify-between p-4 bg-default rounded-lg ring ring-default">
+          <p v-if="teams?.length" class="text-xs font-semibold text-dimmed uppercase tracking-wider">Personal</p>
+          <div v-for="kb in personalKbs" :key="kb.id" class="flex items-center justify-between p-4 bg-default rounded-lg ring ring-default">
             <div>
               <div class="flex items-center gap-1.5">
                 <UIcon v-if="kb.owner_username !== authStore.user?.username" name="i-lucide-share-2" class="size-3.5 text-dimmed shrink-0" />
@@ -135,7 +173,32 @@ onUnmounted(clearRefresh)
             </div>
             <UButton size="xs" variant="ghost" color="error" icon="i-lucide-trash" @click="confirmDelete(kb.id)" />
           </div>
-          <p v-if="!kbs?.length" class="text-dimmed text-center mt-8">No knowledge bases yet.</p>
+          <p v-if="!personalKbs.length && !teams?.length" class="text-dimmed text-center mt-8">No knowledge bases yet.</p>
+          <p v-else-if="!personalKbs.length && teams?.length" class="text-sm text-dimmed">No personal knowledge bases.</p>
+        </div>
+
+        <!-- Team KB sections -->
+        <div v-for="group in teamKbGroups" :key="group.team.id" class="space-y-2">
+          <div class="flex items-center justify-between">
+            <p class="text-xs font-semibold text-dimmed uppercase tracking-wider">{{ group.team.name }}</p>
+            <NuxtLink :to="`/settings/teams/${group.team.id}/knowledge-bases`" class="text-xs text-dimmed hover:text-default">
+              Manage
+            </NuxtLink>
+          </div>
+          <div v-for="kb in group.kbs" :key="kb.id" class="flex items-center justify-between p-4 bg-default rounded-lg ring ring-default">
+            <div>
+              <NuxtLink :to="`/settings/knowledge-bases/${kb.id}`" class="font-medium hover:underline text-highlighted">{{ kb.name }}</NuxtLink>
+              <p v-if="kb.description" class="text-sm text-muted mt-1">{{ kb.description }}</p>
+            </div>
+            <UButton
+              v-if="MANAGER_ROLES.includes(group.team.my_role)"
+              size="xs"
+              variant="ghost"
+              color="error"
+              icon="i-lucide-trash"
+              @click="confirmDelete(kb.id)"
+            />
+          </div>
         </div>
       </UContainer>
     </template>

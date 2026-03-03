@@ -4,7 +4,7 @@ const { $api } = useNuxtApp()
 const searchStore = useSearchStore()
 const isOpen = ref(false)
 const note = ref("")
-const selectedCategory = ref("")
+const selectedCategory = ref("none")
 const saveError = ref("")
 
 interface Category { id: string; name: string }
@@ -21,7 +21,7 @@ async function loadCategories() {
 watch(isOpen, (val) => { if (val) loadCategories() })
 
 const categoryItems = computed(() => [
-  { label: "No category", value: "" },
+  { label: "No category", value: "none" },
   ...categories.value.map(c => ({ label: c.name, value: c.id })),
 ])
 
@@ -32,14 +32,14 @@ async function addBookmark() {
       method: "POST",
       body: {
         chunk: props.chunkId,
-        category: selectedCategory.value || undefined,
+        category: selectedCategory.value === "none" ? undefined : selectedCategory.value,
         note: note.value,
         query: searchStore.lastQuery,
       },
     })
     isOpen.value = false
     note.value = ""
-    selectedCategory.value = ""
+    selectedCategory.value = "none"
   } catch {
     saveError.value = "Failed to save bookmark"
   }

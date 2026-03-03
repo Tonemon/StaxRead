@@ -1,9 +1,12 @@
 import tempfile
 import os
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.db.models import Count
 from rest_framework import mixins, status
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
 
@@ -13,6 +16,8 @@ from apps.ingestion.tasks.pdf import ingest_pdf
 from apps.ingestion.tasks.epub import ingest_epub
 from apps.ingestion.tasks.git import ingest_git
 from apps.ingestion.storage import upload_file, get_presigned_url
+from apps.teams.access import get_accessible_kbs, MANAGER_ROLES
+from apps.teams.models import TeamMembership
 
 User = get_user_model()
 
@@ -21,17 +26,29 @@ class KnowledgeBaseViewSet(ModelViewSet):
     serializer_class = KnowledgeBaseSerializer
 
     def get_queryset(self):
-        return KnowledgeBase.objects.filter(
-            access_entries__user=self.request.user,
-            access_entries__status=KBAccess.Status.ACCEPTED,
-        ).distinct()
+        qs = get_accessible_kbs(self.request.user)
+        team_id = self.request.query_params.get("team")
+        if team_id:
+            qs = qs.filter(team_id=team_id)
+        return qs
 
     def perform_create(self, serializer):
+        team = serializer.validated_data.get("team")
+        if team is not None:
+            if not TeamMembership.objects.filter(
+                team=team, user=self.request.user, role__in=MANAGER_ROLES
+            ).exists():
+                raise PermissionDenied("You must be a Manager or above to create a team KB.")
         serializer.save(owner=self.request.user)
 
     def destroy(self, request, *args, **kwargs):
         kb = self.get_object()
-        if kb.owner != request.user:
+        if kb.team_id:
+            if not TeamMembership.objects.filter(
+                team_id=kb.team_id, user=request.user, role__in=MANAGER_ROLES
+            ).exists():
+                return Response(status=status.HTTP_403_FORBIDDEN)
+        elif kb.owner != request.user:
             return Response(status=status.HTTP_403_FORBIDDEN)
         return super().destroy(request, *args, **kwargs)
 
@@ -123,10 +140,7 @@ class SourceViewSet(ModelViewSet):
     serializer_class = SourceSerializer
 
     def get_queryset(self):
-        from django.db.models import Count
-        accessible_kb_ids = KnowledgeBase.objects.filter(
-            access_entries__user=self.request.user
-        ).values_list("id", flat=True)
+        accessible_kb_ids = get_accessible_kbs(self.request.user).values_list("id", flat=True)
         qs = Source.objects.filter(kb__in=accessible_kb_ids).annotate(chunk_count=Count("chunks"))
         kb_id = self.request.query_params.get("kb")
         if kb_id:
@@ -185,7 +199,6 @@ class SourceViewSet(ModelViewSet):
 
     @action(detail=True, methods=["get"])
     def document(self, request, pk=None):
-        from django.conf import settings
         source = self.get_object()  # raises 404 if not in queryset (access enforced)
 
         if source.source_type == Source.SourceType.PDF:

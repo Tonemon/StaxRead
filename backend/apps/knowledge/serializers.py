@@ -1,14 +1,24 @@
 from rest_framework import serializers
 from apps.knowledge.models import GitCredential, KnowledgeBase, KBAccess, Source
+from apps.teams.models import Team
 
 
 class KnowledgeBaseSerializer(serializers.ModelSerializer):
     owner_username = serializers.CharField(source="owner.username", read_only=True)
+    team = serializers.PrimaryKeyRelatedField(
+        queryset=Team.objects.all(), allow_null=True, required=False, default=None
+    )
+    team_name = serializers.CharField(source="team.name", read_only=True, default=None)
 
     class Meta:
         model = KnowledgeBase
-        fields = ["id", "name", "description", "owner", "owner_username", "created_at", "updated_at"]
-        read_only_fields = ["id", "owner", "owner_username", "created_at", "updated_at"]
+        fields = [
+            "id", "name", "description",
+            "owner", "owner_username",
+            "team", "team_name",
+            "created_at", "updated_at",
+        ]
+        read_only_fields = ["id", "owner", "owner_username", "team_name", "created_at", "updated_at"]
 
 
 class KBInvitationSerializer(serializers.ModelSerializer):
@@ -16,10 +26,11 @@ class KBInvitationSerializer(serializers.ModelSerializer):
     kb_name = serializers.CharField(source="kb.name", read_only=True)
     kb_description = serializers.CharField(source="kb.description", read_only=True)
     owner_username = serializers.CharField(source="kb.owner.username", read_only=True)
+    kb_team_name = serializers.CharField(source="kb.team.name", read_only=True, default=None)
 
     class Meta:
         model = KBAccess
-        fields = ["id", "kb_id", "kb_name", "kb_description", "owner_username", "granted_at"]
+        fields = ["id", "kb_id", "kb_name", "kb_description", "owner_username", "kb_team_name", "granted_at"]
         read_only_fields = fields
 
 

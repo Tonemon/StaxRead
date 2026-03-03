@@ -1,13 +1,46 @@
 <script setup lang="ts">
 const { logout } = useAuth()
 const authStore = useAuthStore()
+const route = useRoute()
+const { $api } = useNuxtApp()
 
 const navLinks = [
   { label: 'Knowledge Bases', to: '/settings/knowledge-bases', icon: 'i-lucide-book-open' },
   { label: 'Git Credentials', to: '/settings/git-credentials', icon: 'i-lucide-key' },
   { label: 'Sharing', to: '/settings/sharing', icon: 'i-lucide-share-2' },
+  { label: 'Teams', to: '/settings/teams', icon: 'i-lucide-users' },
   { label: 'Account', to: '/settings/account', icon: 'i-lucide-user-circle' },
 ]
+
+interface Team { id: string; name: string; my_role: string }
+
+const { data: teams } = await useFetch<Team[]>('/teams/', {
+  $fetch: $api as typeof $fetch,
+  default: () => [] as Team[],
+})
+
+const teamId = computed(() => {
+  // Explicit team route takes priority
+  const match = route.path.match(/^\/settings\/teams\/([^/]+)\//)
+  if (match) return match[1]
+  // Single-team member: always surface that team's sub-nav
+  if (teams.value?.length === 1) return teams.value[0].id
+  return null
+})
+
+const activeTeam = computed(() => teams.value?.find(t => t.id === teamId.value) ?? null)
+
+const teamSubNav = computed(() => {
+  if (!teamId.value) return null
+  const id = teamId.value
+  return [
+    { label: 'General', to: `/settings/teams/${id}/general`, icon: 'i-lucide-settings' },
+    { label: 'Knowledge Bases', to: `/settings/teams/${id}/knowledge-bases`, icon: 'i-lucide-book-open' },
+    { label: 'Members', to: `/settings/teams/${id}/members`, icon: 'i-lucide-users' },
+    { label: 'Git Credentials', to: `/settings/teams/${id}/git-credentials`, icon: 'i-lucide-key' },
+    { label: 'API Tokens', to: `/settings/teams/${id}/api-tokens`, icon: 'i-lucide-zap' },
+  ]
+})
 
 const open = ref(false)
 
@@ -44,6 +77,15 @@ const displayName = computed(() => {
           :collapsed="collapsed"
           orientation="vertical"
         />
+        <template v-if="teamSubNav && !collapsed">
+          <div class="mt-4 px-3 mb-1">
+            <p class="text-xs font-semibold text-dimmed uppercase tracking-wider">{{ activeTeam?.name ?? 'Team Settings' }}</p>
+          </div>
+          <UNavigationMenu
+            :items="teamSubNav"
+            orientation="vertical"
+          />
+        </template>
       </template>
 
       <template #footer="{ collapsed }">

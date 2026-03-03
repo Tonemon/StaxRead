@@ -11,10 +11,11 @@ class BookmarkCategorySerializer(serializers.ModelSerializer):
 
 class BookmarkSerializer(serializers.ModelSerializer):
     chunk_text = serializers.CharField(source="chunk.text", read_only=True)
+    chunk_metadata = serializers.JSONField(source="chunk.metadata", read_only=True)
     source_title = serializers.CharField(source="chunk.source.title", read_only=True)
     source_id = serializers.UUIDField(source="chunk.source.id", read_only=True)
 
     class Meta:
         model = Bookmark
-        fields = ["id", "chunk", "chunk_text", "source_title", "source_id", "category", "note", "query", "created_at", "updated_at"]
-        read_only_fields = ["id", "chunk_text", "source_title", "source_id", "created_at", "updated_at"]
+        fields = ["id", "chunk", "chunk_text", "chunk_metadata", "source_title", "source_id", "category", "note", "query", "created_at", "updated_at"]
+        read_only_fields = ["id", "chunk_text", "chunk_metadata", "source_title", "source_id", "created_at", "updated_at"]

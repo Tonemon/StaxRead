@@ -29,6 +29,12 @@ class APIToken(models.Model):
     )
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
+    team = models.ForeignKey(
+        "teams.Team",
+        on_delete=models.CASCADE,
+        null=True, blank=True,
+        related_name="api_tokens",
+    )
 
     # Stored hash — raw token is NEVER saved
     token_hash = models.CharField(max_length=64, unique=True)

@@ -27,7 +27,7 @@ const query = ref('')
 const loading = ref(false)
 
 interface BookmarkItem { id: string; chunk: string; chunk_text: string; query: string; note: string; category: string | null; created_at: string }
-interface Invitation { id: string; kb_id: string; kb_name: string; owner_username: string }
+interface Invitation { id: string; kb_id: string; kb_name: string; owner_username: string; kb_team_name: string | null }
 
 const { data: bookmarks, refresh: refreshBookmarks } = await useFetch<BookmarkItem[]>('/bookmarks/', {
   $fetch: $api as typeof $fetch,
@@ -156,7 +156,10 @@ onUnmounted(clearRefresh)
             <div v-for="inv in invitations" :key="inv.id" class="flex items-center justify-between gap-3 p-3 bg-default rounded-lg ring ring-default">
               <div class="min-w-0">
                 <p class="text-sm font-medium text-highlighted">{{ inv.kb_name }}</p>
-                <p class="text-xs text-dimmed">Shared by {{ inv.owner_username }}</p>
+                <p class="text-xs text-dimmed">
+                  <template v-if="inv.kb_team_name">Team knowledge base &middot; {{ inv.kb_team_name }}</template>
+                  <template v-else>Shared by {{ inv.owner_username }}</template>
+                </p>
               </div>
               <div class="flex gap-2 shrink-0">
                 <UButton size="xs" color="neutral" variant="outline" icon="i-lucide-check" @click="acceptInvitation(inv.id)">Accept</UButton>

@@ -116,3 +116,17 @@ class TestKnowledgeBaseAPI:
         )
         assert response.status_code == 200
         assert not KBAccess.objects.filter(kb=kb, user=bob).exists()
+
+    def test_team_filter_returns_only_team_kbs(self, alice_client, alice):
+        from apps.knowledge.models import KnowledgeBase
+        from apps.teams.models import Team
+        personal_kb = KnowledgeBase.objects.create(name="Personal", owner=alice)
+        team = Team.create(name="Acme", created_by=alice)
+        team_kb = KnowledgeBase.objects.create(name="Team KB", owner=alice, team=team)
+
+        url = reverse("knowledgebase-list") + f"?team={team.id}"
+        resp = alice_client.get(url)
+        assert resp.status_code == 200
+        ids = [kb["id"] for kb in resp.data]
+        assert str(team_kb.id) in ids
+        assert str(personal_kb.id) not in ids

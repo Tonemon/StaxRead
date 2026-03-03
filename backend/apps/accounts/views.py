@@ -4,6 +4,9 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
+from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.exceptions import AuthenticationFailed
 
 from apps.common.permissions import IsSuperuser
 from apps.accounts.serializers import UserSerializer, ProfileSerializer, PasswordChangeSerializer
@@ -11,10 +14,47 @@ from apps.accounts.serializers import UserSerializer, ProfileSerializer, Passwor
 User = get_user_model()
 
 
+class StaxReadTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        # Check before simplejwt so we can return a specific message for disabled accounts.
+        username = attrs.get(self.username_field, "")
+        password = attrs.get("password", "")
+        try:
+            user = User.objects.get(**{self.username_field: username})
+            if user.check_password(password) and not user.is_active:
+                raise AuthenticationFailed(
+                    "This account is disabled. Please contact an administrator.",
+                    "account_disabled",
+                )
+        except User.DoesNotExist:
+            pass
+        return super().validate(attrs)
+
+
+class StaxReadTokenObtainPairView(TokenObtainPairView):
+    serializer_class = StaxReadTokenObtainPairSerializer
+
+
 class UserViewSet(ModelViewSet):
     queryset = User.objects.all().order_by("date_joined")
     serializer_class = UserSerializer
     permission_classes = [IsSuperuser]
+
+    def perform_update(self, serializer):
+        user = self.get_object()
+        was_superuser = user.is_superuser
+        updated = serializer.save()
+        if was_superuser and not updated.is_superuser:
+            self._blacklist_all_tokens(updated)
+
+    @staticmethod
+    def _blacklist_all_tokens(user):
+        from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
+        tokens = OutstandingToken.objects.filter(user=user)
+        BlacklistedToken.objects.bulk_create(
+            [BlacklistedToken(token=t) for t in tokens],
+            ignore_conflicts=True,
+        )
 
 
 class MeView(APIView):

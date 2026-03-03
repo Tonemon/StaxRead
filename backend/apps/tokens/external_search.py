@@ -12,7 +12,7 @@ from rest_framework.views import APIView
 
 from apps.ingestion.embeddings import embed_query
 from apps.ingestion.qdrant_client import get_qdrant_client
-from apps.knowledge.models import KnowledgeBase, KBAccess, Chunk
+from apps.knowledge.models import KnowledgeBase, Chunk
 from apps.search.models import SearchHistory
 from apps.tokens.authentication import APITokenAuthentication
 
@@ -49,22 +49,30 @@ class ExternalSearchView(APIView):
         requested_kb_ids = [str(uid) for uid in ser.validated_data["kb_ids"]]
         limit = ser.validated_data["limit"]
 
-        token: APIToken = request.auth
+        token = request.auth
 
-        # KBs the token owner currently has accepted access to
-        accessible_kb_ids = set(
-            str(pk) for pk in KnowledgeBase.objects.filter(
-                access_entries__user=request.user,
-                access_entries__status=KBAccess.Status.ACCEPTED,
-            ).values_list("id", flat=True)
-        )
-
-        # Determine token-scoped KB IDs, always intersected with current access
-        scoped_kbs = token.knowledge_bases.values_list("id", flat=True)
-        if scoped_kbs:
-            token_kb_ids = {str(pk) for pk in scoped_kbs} & accessible_kb_ids
+        if token.team_id:
+            # Team token: scope to this team's KBs only
+            from apps.knowledge.models import KnowledgeBase as KB
+            all_team_kb_ids = set(
+                str(pk) for pk in KB.objects.filter(team_id=token.team_id).values_list("id", flat=True)
+            )
+            scoped_kbs = list(token.knowledge_bases.values_list("id", flat=True))
+            if scoped_kbs:
+                token_kb_ids = {str(pk) for pk in scoped_kbs} & all_team_kb_ids
+            else:
+                token_kb_ids = all_team_kb_ids
         else:
-            token_kb_ids = accessible_kb_ids
+            # Personal token: use user-based access
+            from apps.teams.access import get_accessible_kbs
+            accessible_kb_ids = set(
+                str(pk) for pk in get_accessible_kbs(request.user).values_list("id", flat=True)
+            )
+            scoped_kbs = list(token.knowledge_bases.values_list("id", flat=True))
+            if scoped_kbs:
+                token_kb_ids = {str(pk) for pk in scoped_kbs} & accessible_kb_ids
+            else:
+                token_kb_ids = accessible_kb_ids
 
         if requested_kb_ids:
             effective_kb_ids = [kid for kid in requested_kb_ids if kid in token_kb_ids]
