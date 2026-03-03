@@ -26,7 +26,7 @@ const { data: teams } = await useFetch<Team[]>('/teams/', {
 const MANAGER_ROLES = ['manager', 'admin', 'owner']
 
 const locationOptions = computed(() => {
-  const opts = [{ label: 'Personal', value: '' }]
+  const opts = [{ label: 'Personal', value: 'personal' }]
   for (const t of (teams.value || [])) {
     if (MANAGER_ROLES.includes(t.my_role)) {
       opts.push({ label: t.name, value: t.id })
@@ -36,16 +36,16 @@ const locationOptions = computed(() => {
 })
 
 const showCreate = ref(false)
-const form = reactive({ name: '', description: '', team_id: '' })
+const form = reactive({ name: '', description: '', team_id: 'personal' })
 
 async function createKB() {
   if (!form.name) return
   const body: Record<string, unknown> = { name: form.name, description: form.description }
-  if (form.team_id) body.team = form.team_id
+  if (form.team_id !== 'personal') body.team = form.team_id
   await ($api as typeof $fetch)('/knowledge-bases/', { method: 'POST', body })
   form.name = ''
   form.description = ''
-  form.team_id = ''
+  form.team_id = 'personal'
   showCreate.value = false
   refresh()
 }
