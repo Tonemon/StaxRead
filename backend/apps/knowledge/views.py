@@ -1,9 +1,12 @@
 import tempfile
 import os
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.db.models import Count
 from rest_framework import mixins, status
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
 
@@ -35,7 +38,6 @@ class KnowledgeBaseViewSet(ModelViewSet):
             if not TeamMembership.objects.filter(
                 team=team, user=self.request.user, role__in=MANAGER_ROLES
             ).exists():
-                from rest_framework.exceptions import PermissionDenied
                 raise PermissionDenied("You must be a Manager or above to create a team KB.")
         serializer.save(owner=self.request.user)
 
@@ -138,7 +140,6 @@ class SourceViewSet(ModelViewSet):
     serializer_class = SourceSerializer
 
     def get_queryset(self):
-        from django.db.models import Count
         accessible_kb_ids = get_accessible_kbs(self.request.user).values_list("id", flat=True)
         qs = Source.objects.filter(kb__in=accessible_kb_ids).annotate(chunk_count=Count("chunks"))
         kb_id = self.request.query_params.get("kb")
@@ -198,7 +199,6 @@ class SourceViewSet(ModelViewSet):
 
     @action(detail=True, methods=["get"])
     def document(self, request, pk=None):
-        from django.conf import settings
         source = self.get_object()  # raises 404 if not in queryset (access enforced)
 
         if source.source_type == Source.SourceType.PDF:
