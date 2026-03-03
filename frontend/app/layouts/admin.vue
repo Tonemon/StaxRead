@@ -1,6 +1,7 @@
 <script setup lang="ts">
 const { logout } = useAuth()
 const authStore = useAuthStore()
+const route = useRoute()
 
 const navLinks = [
   { label: 'Knowledge Bases', to: '/settings/knowledge-bases', icon: 'i-lucide-book-open' },
@@ -9,6 +10,22 @@ const navLinks = [
   { label: 'Teams', to: '/settings/teams', icon: 'i-lucide-users' },
   { label: 'Account', to: '/settings/account', icon: 'i-lucide-user-circle' },
 ]
+
+const teamId = computed(() => {
+  const match = route.path.match(/^\/settings\/teams\/([^/]+)\//)
+  return match ? match[1] : null
+})
+
+const teamSubNav = computed(() => {
+  if (!teamId.value) return null
+  const id = teamId.value
+  return [
+    { label: 'General', to: `/settings/teams/${id}/general`, icon: 'i-lucide-settings' },
+    { label: 'Members', to: `/settings/teams/${id}/members`, icon: 'i-lucide-users' },
+    { label: 'Git Credentials', to: `/settings/teams/${id}/git-credentials`, icon: 'i-lucide-key' },
+    { label: 'API Tokens', to: `/settings/teams/${id}/api-tokens`, icon: 'i-lucide-zap' },
+  ]
+})
 
 const open = ref(false)
 
@@ -45,6 +62,15 @@ const displayName = computed(() => {
           :collapsed="collapsed"
           orientation="vertical"
         />
+        <template v-if="teamSubNav && !collapsed">
+          <div class="mt-4 px-3 mb-1">
+            <p class="text-xs font-semibold text-dimmed uppercase tracking-wider">Team Settings</p>
+          </div>
+          <UNavigationMenu
+            :items="teamSubNav"
+            orientation="vertical"
+          />
+        </template>
       </template>
 
       <template #footer="{ collapsed }">
