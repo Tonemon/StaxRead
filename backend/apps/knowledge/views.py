@@ -23,7 +23,11 @@ class KnowledgeBaseViewSet(ModelViewSet):
     serializer_class = KnowledgeBaseSerializer
 
     def get_queryset(self):
-        return get_accessible_kbs(self.request.user)
+        qs = get_accessible_kbs(self.request.user)
+        team_id = self.request.query_params.get("team")
+        if team_id:
+            qs = qs.filter(team_id=team_id)
+        return qs
 
     def perform_create(self, serializer):
         team = serializer.validated_data.get("team")
