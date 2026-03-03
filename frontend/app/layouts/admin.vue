@@ -2,6 +2,7 @@
 const { logout } = useAuth()
 const authStore = useAuthStore()
 const route = useRoute()
+const { $api } = useNuxtApp()
 
 const navLinks = [
   { label: 'Knowledge Bases', to: '/settings/knowledge-bases', icon: 'i-lucide-book-open' },
@@ -11,10 +12,23 @@ const navLinks = [
   { label: 'Account', to: '/settings/account', icon: 'i-lucide-user-circle' },
 ]
 
-const teamId = computed(() => {
-  const match = route.path.match(/^\/settings\/teams\/([^/]+)\//)
-  return match ? match[1] : null
+interface Team { id: string; name: string; my_role: string }
+
+const { data: teams } = await useFetch<Team[]>('/teams/', {
+  $fetch: $api as typeof $fetch,
+  default: () => [] as Team[],
 })
+
+const teamId = computed(() => {
+  // Explicit team route takes priority
+  const match = route.path.match(/^\/settings\/teams\/([^/]+)\//)
+  if (match) return match[1]
+  // Single-team member: always surface that team's sub-nav
+  if (teams.value?.length === 1) return teams.value[0].id
+  return null
+})
+
+const activeTeam = computed(() => teams.value?.find(t => t.id === teamId.value) ?? null)
 
 const teamSubNav = computed(() => {
   if (!teamId.value) return null
@@ -65,7 +79,7 @@ const displayName = computed(() => {
         />
         <template v-if="teamSubNav && !collapsed">
           <div class="mt-4 px-3 mb-1">
-            <p class="text-xs font-semibold text-dimmed uppercase tracking-wider">Team Settings</p>
+            <p class="text-xs font-semibold text-dimmed uppercase tracking-wider">{{ activeTeam?.name ?? 'Team Settings' }}</p>
           </div>
           <UNavigationMenu
             :items="teamSubNav"
