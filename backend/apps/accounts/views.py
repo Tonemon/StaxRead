@@ -4,11 +4,35 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
+from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.exceptions import AuthenticationFailed
 
 from apps.common.permissions import IsSuperuser
 from apps.accounts.serializers import UserSerializer, ProfileSerializer, PasswordChangeSerializer
 
 User = get_user_model()
+
+
+class StaxReadTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        # Check before simplejwt so we can return a specific message for disabled accounts.
+        username = attrs.get(self.username_field, "")
+        password = attrs.get("password", "")
+        try:
+            user = User.objects.get(**{self.username_field: username})
+            if user.check_password(password) and not user.is_active:
+                raise AuthenticationFailed(
+                    "This account is disabled. Please contact an administrator.",
+                    "account_disabled",
+                )
+        except User.DoesNotExist:
+            pass
+        return super().validate(attrs)
+
+
+class StaxReadTokenObtainPairView(TokenObtainPairView):
+    serializer_class = StaxReadTokenObtainPairSerializer
 
 
 class UserViewSet(ModelViewSet):

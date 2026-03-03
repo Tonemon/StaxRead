@@ -12,8 +12,9 @@ async function submit() {
   loading.value = true
   try {
     await login(form.username, form.password)
-  } catch {
-    error.value = 'Invalid credentials'
+  } catch (e: unknown) {
+    const detail = (e as { data?: { detail?: string } })?.data?.detail
+    error.value = detail ?? 'Invalid credentials'
   } finally {
     loading.value = false
   }
