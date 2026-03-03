@@ -21,6 +21,12 @@ const myRole = computed(() =>
   members.value?.find(m => m.username === authStore.user?.username)?.role ?? ''
 )
 const canManage = computed(() => ['admin', 'owner'].includes(myRole.value))
+
+watch(myRole, (role) => {
+  if (role === 'guest') {
+    navigateTo(`/settings/teams/${teamId}/general`)
+  }
+}, { immediate: true })
 const isOwner = computed(() => myRole.value === 'owner')
 
 const roleOptions = computed(() => {

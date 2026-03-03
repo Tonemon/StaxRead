@@ -32,10 +32,14 @@ const { data: members } = await useFetch<Member[]>(`/teams/${teamId}/members/`, 
   default: () => [] as Member[],
 })
 
-const canManage = computed(() => {
-  const role = members.value?.find(m => m.username === authStore.user?.username)?.role ?? ''
-  return ['manager', 'admin', 'owner'].includes(role)
-})
+const myRole = computed(() => members.value?.find(m => m.username === authStore.user?.username)?.role ?? '')
+const canManage = computed(() => ['manager', 'admin', 'owner'].includes(myRole.value))
+
+watch(myRole, (role) => {
+  if (role && !['manager', 'admin', 'owner'].includes(role)) {
+    navigateTo(`/settings/teams/${teamId}/general`)
+  }
+}, { immediate: true })
 
 const { data: tokens, refresh } = await useFetch<APIToken[]>(`/teams/${teamId}/api-tokens/`, {
   $fetch: $api as typeof $fetch,
