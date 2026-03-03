@@ -5,7 +5,7 @@ const { $api } = useNuxtApp()
 const kbId = route.params.id as string
 const { setRefresh, clearRefresh } = useKeyboardShortcuts()
 
-interface KB { id: string; name: string; description: string; owner_username: string }
+interface KB { id: string; name: string; description: string; owner_username: string; team: string | null; team_name: string | null }
 interface Source {
   id: string; title: string; source_type: string; status: string
   file_size_bytes: number | null; chunk_count: number
@@ -218,7 +218,10 @@ async function removeMember(userId: string) {
 
           <!-- Header -->
           <div>
-            <NuxtLink to="/settings/knowledge-bases" class="text-sm text-dimmed hover:text-default">&larr; Knowledge Bases</NuxtLink>
+            <NuxtLink
+              :to="kb?.team ? `/settings/teams/${kb.team}/knowledge-bases` : '/settings/knowledge-bases'"
+              class="text-sm text-dimmed hover:text-default"
+            >&larr; {{ kb?.team_name ?? 'Knowledge Bases' }}</NuxtLink>
 
             <!-- Editable name -->
             <div class="mt-2">
