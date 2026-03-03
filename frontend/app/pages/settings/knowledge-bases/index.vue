@@ -4,7 +4,7 @@ const { $api } = useNuxtApp()
 const authStore = useAuthStore()
 const { setRefresh, clearRefresh } = useKeyboardShortcuts()
 
-interface KB { id: string; name: string; description: string; owner_username: string; created_at: string }
+interface KB { id: string; name: string; description: string; owner_username: string; created_at: string; team: string | null }
 interface Invitation { id: string; kb_id: string; kb_name: string; kb_description: string; owner_username: string }
 interface Team { id: string; name: string; my_role: string }
 
@@ -12,6 +12,8 @@ const { data: kbs, refresh } = await useFetch<KB[]>('/knowledge-bases/', {
   $fetch: $api as typeof $fetch,
   default: () => [] as KB[],
 })
+
+const personalKbs = computed(() => (kbs.value ?? []).filter(kb => kb.team === null))
 
 const { data: invitations, refresh: refreshInvitations } = await useFetch<Invitation[]>('/kb-invitations/', {
   $fetch: $api as typeof $fetch,
@@ -148,7 +150,7 @@ onUnmounted(clearRefresh)
         </div>
 
         <div class="space-y-2">
-          <div v-for="kb in kbs" :key="kb.id" class="flex items-center justify-between p-4 bg-default rounded-lg ring ring-default">
+          <div v-for="kb in personalKbs" :key="kb.id" class="flex items-center justify-between p-4 bg-default rounded-lg ring ring-default">
             <div>
               <div class="flex items-center gap-1.5">
                 <UIcon v-if="kb.owner_username !== authStore.user?.username" name="i-lucide-share-2" class="size-3.5 text-dimmed shrink-0" />
@@ -159,7 +161,7 @@ onUnmounted(clearRefresh)
             </div>
             <UButton size="xs" variant="ghost" color="error" icon="i-lucide-trash" @click="confirmDelete(kb.id)" />
           </div>
-          <p v-if="!kbs?.length" class="text-dimmed text-center mt-8">No knowledge bases yet.</p>
+          <p v-if="!personalKbs.length" class="text-dimmed text-center mt-8">No knowledge bases yet.</p>
         </div>
       </UContainer>
     </template>
