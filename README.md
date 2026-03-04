@@ -69,6 +69,23 @@ docker compose exec django python manage.py createsuperuser
 
 Log in at `https://<your-domain>` with these credentials. The **Admin** section (visible only to superusers) lets you manage users. The **Settings** section (all users) manages Knowledge Bases, Git credentials, sharing, and account preferences.
 
+### GPU acceleration (optional)
+
+The embedding pipeline (ingestion and search) automatically uses CUDA when a GPU is available inside the container. On CPU the stack still works — GPU only improves ingestion throughput.
+
+**Requirements on the host:**
+- NVIDIA drivers ≥ 525 (for CUDA 12)
+- [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/)
+
+**Start with GPU support:**
+```bash
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml up --build
+```
+
+The `docker-compose.gpu.yml` overlay sets a `GPU=1` build arg on the `django` and `celery` images (which reinstalls torch with CUDA and swaps `onnxruntime` → `onnxruntime-gpu`) and grants both containers access to the first NVIDIA device.
+
+> **GTX 1060 3 GB** — Pascal architecture (compute 6.1) is supported by CUDA 12. Both models load into ~700 MB of VRAM combined, well within the 3 GB budget. Expect roughly 3–8× faster batch embedding compared to CPU.
+
 ## Architecture
 
 | Service | Role |

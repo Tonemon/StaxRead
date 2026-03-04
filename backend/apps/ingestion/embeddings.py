@@ -1,30 +1,66 @@
+import logging
 from functools import lru_cache
 from typing import List, Tuple
 
 import numpy as np
 from django.conf import settings
 
+logger = logging.getLogger(__name__)
 
 DENSE_MODEL_NAME = "BAAI/bge-base-en-v1.5"
 SPARSE_MODEL_NAME = "prithivida/Splade_PP_en_v1"
 BGE_QUERY_PREFIX = "Represent this sentence for searching relevant passages: "
 
 
+def _get_device() -> str:
+    """Return 'cuda' if a CUDA-capable GPU is available, otherwise 'cpu'."""
+    import torch
+    if torch.cuda.is_available():
+        name = torch.cuda.get_device_name(0)
+        logger.info("GPU detected: %s — using CUDA for embeddings", name)
+        return "cuda"
+    logger.info("No GPU detected — using CPU for embeddings")
+    return "cpu"
+
+
+def _get_onnx_providers() -> list:
+    """
+    Return ONNX Runtime execution providers in preference order.
+    CUDAExecutionProvider is included only when onnxruntime-gpu is installed
+    and a CUDA device is actually available.
+    """
+    import torch
+    if torch.cuda.is_available():
+        try:
+            import onnxruntime as ort
+            available = ort.get_available_providers()
+            if "CUDAExecutionProvider" in available:
+                return ["CUDAExecutionProvider", "CPUExecutionProvider"]
+        except Exception:
+            pass
+    return ["CPUExecutionProvider"]
+
+
 @lru_cache(maxsize=1)
 def _get_dense_model():
     from sentence_transformers import SentenceTransformer
+    device = _get_device()
     return SentenceTransformer(
         DENSE_MODEL_NAME,
         cache_folder=settings.MODEL_CACHE_DIR,
+        device=device,
     )
 
 
 @lru_cache(maxsize=1)
 def _get_sparse_model():
     from fastembed import SparseTextEmbedding
+    providers = _get_onnx_providers()
+    logger.info("Loading sparse model with ONNX providers: %s", providers)
     return SparseTextEmbedding(
         model_name=SPARSE_MODEL_NAME,
         cache_dir=settings.MODEL_CACHE_DIR,
+        providers=providers,
     )
 
 

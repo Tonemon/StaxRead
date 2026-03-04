@@ -1,5 +1,7 @@
 FROM python:3.12-slim
 
+ARG GPU=0
+
 RUN apt-get update && apt-get install -y \
     git \
     libmagic1 \
@@ -9,6 +11,14 @@ WORKDIR /app
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
+# GPU build: reinstall torch from PyPI default index (includes CUDA) and swap
+# onnxruntime for onnxruntime-gpu so fastembed can use CUDAExecutionProvider.
+RUN if [ "$GPU" = "1" ]; then \
+        pip install --no-cache-dir --force-reinstall "torch==2.5.*" && \
+        pip uninstall -y onnxruntime && \
+        pip install --no-cache-dir onnxruntime-gpu; \
+    fi
 
 COPY . .
 
