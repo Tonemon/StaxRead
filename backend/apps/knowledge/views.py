@@ -203,12 +203,12 @@ class SourceViewSet(ModelViewSet):
 
         if source.source_type == Source.SourceType.PDF:
             ext = os.path.splitext(source.storage_key)[1].lstrip(".")
-            url = get_presigned_url(source.pk, ext)
+            url = get_presigned_url(source.pk, ext, filename=f"{source.title}.{ext}")
             return Response({"url": url, "source_type": source.source_type})
 
         elif source.source_type == Source.SourceType.EPUB:
             ext = os.path.splitext(source.storage_key)[1].lstrip(".")
-            url = get_presigned_url(source.pk, ext)
+            url = get_presigned_url(source.pk, ext, filename=f"{source.title}.{ext}")
             return Response({"url": url, "source_type": source.source_type})
 
         elif source.source_type == Source.SourceType.GIT:

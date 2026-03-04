@@ -2,6 +2,13 @@
 definePageMeta({ middleware: 'auth', layout: 'admin' })
 const { $api } = useNuxtApp()
 const authStore = useAuthStore()
+const colorMode = useColorMode()
+
+const themeOptions = [
+  { label: 'System', value: 'system' },
+  { label: 'Light', value: 'light' },
+  { label: 'Dark', value: 'dark' },
+]
 
 const profileForm = reactive({
   first_name: '',
@@ -187,6 +194,21 @@ async function changePassword() {
               <UButton :loading="greetingLoading" @click="saveGreeting">Save</UButton>
             </div>
           </template>
+        </UCard>
+
+        <!-- Appearance -->
+        <UCard>
+          <template #header>
+            <h2 class="text-base font-semibold text-highlighted">Appearance</h2>
+          </template>
+          <UFormField label="Theme">
+            <USelectMenu
+              v-model="colorMode.preference"
+              :items="themeOptions"
+              value-key="value"
+              class="w-48"
+            />
+          </UFormField>
         </UCard>
 
         <!-- Change password -->
