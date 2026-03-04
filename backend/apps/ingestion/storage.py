@@ -72,7 +72,7 @@ def get_presigned_url(source_id: uuid.UUID, extension: str, filename: str = "", 
     response_headers = {}
     if filename:
         encoded = urllib.parse.quote(filename, safe="")
-        response_headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded}"
+        response_headers["response-content-disposition"] = f"attachment; filename*=UTF-8''{encoded}"
     url = client.presigned_get_object(
         bucket_name=settings.MINIO_BUCKET,
         object_name=object_name,
