@@ -19,6 +19,9 @@ class IngestionConfig(AppConfig):
     def ready(self):
         if sys.argv[1:2] and sys.argv[1] in _SKIP_COMMANDS:
             return
+        # celery beat only schedules tasks — it never embeds anything
+        if "beat" in sys.argv:
+            return
         try:
             from apps.ingestion.embeddings import warmup
             logger.info("Pre-loading embedding models...")
