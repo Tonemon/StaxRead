@@ -1,8 +1,7 @@
 services:
   certgen:
-    image: nginx:alpine
-    entrypoint: sh
-    command: /scripts/generate-certs.sh
+    image: alpine
+    command: sh -c "apk add --no-cache openssl -q && sh /scripts/generate-certs.sh"
     env_file: .env
     volumes:
       - ./certs:/certs
