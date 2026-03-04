@@ -27,3 +27,4 @@ class User(AbstractUser):
         choices=Theme.choices,
         default=Theme.SYSTEM,
     )
+    context_chunks = models.PositiveSmallIntegerField(default=1)

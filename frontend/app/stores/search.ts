@@ -1,5 +1,11 @@
 import { defineStore } from 'pinia'
 
+export interface ContextChunk {
+  chunk_id: string
+  text: string
+  metadata: Record<string, unknown>
+}
+
 export interface SearchResult {
   chunk_id: string
   text: string
@@ -9,6 +15,8 @@ export interface SearchResult {
   kb_id: string
   kb_name: string
   metadata: Record<string, unknown>
+  context_before: ContextChunk[]
+  context_after: ContextChunk[]
 }
 
 export const useSearchStore = defineStore('search', () => {

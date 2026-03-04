@@ -1,4 +1,6 @@
 import logging
+from collections import defaultdict
+
 from rest_framework import serializers, status
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
@@ -111,7 +113,44 @@ class SearchView(APIView):
                 "kb_id": str(chunk.kb_id),
                 "kb_name": chunk.kb.name,
                 "metadata": chunk.metadata,
+                "context_before": [],
+                "context_after": [],
             })
+
+        # Fetch adjacent context chunks
+        context_n = getattr(request.user, "context_chunks", 1)
+        if context_n > 0 and results:
+            from django.db.models import Q
+            context_q = Q()
+            for r in results:
+                chunk = chunks_map.get(r["chunk_id"])
+                if chunk:
+                    context_q |= Q(
+                        source_id=chunk.source_id,
+                        chunk_index__gte=chunk.chunk_index - context_n,
+                        chunk_index__lte=chunk.chunk_index + context_n,
+                    )
+
+            ctx_by_source: dict = defaultdict(dict)
+            for c in Chunk.objects.filter(context_q).only("id", "source_id", "chunk_index", "text", "metadata"):
+                ctx_by_source[str(c.source_id)][c.chunk_index] = c
+
+            for r in results:
+                chunk = chunks_map.get(r["chunk_id"])
+                if not chunk:
+                    continue
+                src = ctx_by_source[str(chunk.source_id)]
+                idx = chunk.chunk_index
+                r["context_before"] = [
+                    {"chunk_id": str(src[idx - i].pk), "text": src[idx - i].text, "metadata": src[idx - i].metadata}
+                    for i in range(1, context_n + 1)
+                    if (idx - i) in src
+                ]
+                r["context_after"] = [
+                    {"chunk_id": str(src[idx + i].pk), "text": src[idx + i].text, "metadata": src[idx + i].metadata}
+                    for i in range(1, context_n + 1)
+                    if (idx + i) in src
+                ]
 
         # Save to history
         SearchHistory.objects.create(
