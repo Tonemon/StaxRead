@@ -11,8 +11,8 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             "id", "username", "email", "first_name", "last_name",
-            "is_active", "is_superuser", "show_greeting", "greeting_display",
-            "date_joined", "password",
+            "is_active", "is_superuser", "show_greeting", "greeting_display", "theme",
+            "context_chunks", "date_joined", "password",
         ]
         read_only_fields = ["id", "date_joined"]
 
@@ -34,9 +34,11 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class ProfileSerializer(serializers.ModelSerializer):
+    context_chunks = serializers.IntegerField(min_value=0, max_value=10, required=False)
+
     class Meta:
         model = User
-        fields = ["id", "username", "email", "first_name", "last_name", "is_superuser", "show_greeting", "greeting_display"]
+        fields = ["id", "username", "email", "first_name", "last_name", "is_superuser", "show_greeting", "greeting_display", "theme", "context_chunks"]
         read_only_fields = ["id", "is_superuser"]
 
 

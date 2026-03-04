@@ -30,15 +30,22 @@ const teamId = computed(() => {
 
 const activeTeam = computed(() => teams.value?.find(t => t.id === teamId.value) ?? null)
 
+const MANAGER_ROLES = ['manager', 'admin', 'owner']
+
 const teamSubNav = computed(() => {
   if (!teamId.value) return null
   const id = teamId.value
+  const role = activeTeam.value?.my_role ?? ''
+  const isManager = MANAGER_ROLES.includes(role)
+  const isGuest = role === 'guest'
   return [
     { label: 'General', to: `/settings/teams/${id}/general`, icon: 'i-lucide-settings' },
     { label: 'Knowledge Bases', to: `/settings/teams/${id}/knowledge-bases`, icon: 'i-lucide-book-open' },
-    { label: 'Members', to: `/settings/teams/${id}/members`, icon: 'i-lucide-users' },
-    { label: 'Git Credentials', to: `/settings/teams/${id}/git-credentials`, icon: 'i-lucide-key' },
-    { label: 'API Tokens', to: `/settings/teams/${id}/api-tokens`, icon: 'i-lucide-zap' },
+    ...(!isGuest ? [{ label: 'Members', to: `/settings/teams/${id}/members`, icon: 'i-lucide-users' }] : []),
+    ...(isManager ? [
+      { label: 'Git Credentials', to: `/settings/teams/${id}/git-credentials`, icon: 'i-lucide-key' },
+      { label: 'API Tokens', to: `/settings/teams/${id}/api-tokens`, icon: 'i-lucide-zap' },
+    ] : []),
   ]
 })
 

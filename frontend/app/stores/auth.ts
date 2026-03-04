@@ -9,6 +9,7 @@ interface UserInfo {
   is_superuser: boolean
   show_greeting: boolean
   greeting_display: 'username' | 'full_name' | 'first_name'
+  theme: 'system' | 'light' | 'dark'
 }
 
 export const useAuthStore = defineStore('auth', () => {

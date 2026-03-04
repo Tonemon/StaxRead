@@ -1,0 +1,34 @@
+# GPU overlay — use alongside the main compose file:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up --build
+#
+# Requirements on the host:
+#   - NVIDIA drivers (>=525 recommended for CUDA 12)
+#   - NVIDIA Container Toolkit  (https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/)
+
+services:
+  django:
+    build:
+      context: ./backend
+      args:
+        GPU: "1"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  celery:
+    build:
+      context: ./backend
+      args:
+        GPU: "1"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

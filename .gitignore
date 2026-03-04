@@ -32,9 +32,15 @@ dist/
 # Docker
 *.log
 
+# Generated SSL certificates
+certs/
+
 # Editor
 .vscode/
 .idea/
 *.swp
 *.swo
 .DS_Store
+
+
+backend/model_cache/

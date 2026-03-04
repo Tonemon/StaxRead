@@ -1,4 +1,5 @@
 import os
+import urllib.parse
 import uuid
 from datetime import timedelta
 from functools import lru_cache
@@ -53,7 +54,7 @@ def upload_file(source_id: uuid.UUID, file_path: str, content_type: str) -> str:
     return object_name
 
 
-def get_presigned_url(source_id: uuid.UUID, extension: str, expires_hours: int = 1) -> str:
+def get_presigned_url(source_id: uuid.UUID, extension: str, filename: str = "", expires_hours: int = 1) -> str:
     """
     Generate a presigned GET URL for the source document.
 
@@ -61,14 +62,22 @@ def get_presigned_url(source_id: uuid.UUID, extension: str, expires_hours: int =
     We rewrite the origin to /minio so the browser hits nginx, which proxies
     back to minio:9000 with Host: minio:9000 intact — keeping the AWS v4
     signature valid regardless of the public hostname.
+
+    If filename is provided it is set as the Content-Disposition attachment
+    name so the browser saves the file under that name instead of the UUID.
     """
     client = get_minio_client()
     ext = extension if extension.startswith(".") else f".{extension}"
     object_name = f"documents/{source_id}{ext}"
+    response_headers = {}
+    if filename:
+        encoded = urllib.parse.quote(filename, safe="")
+        response_headers["response-content-disposition"] = f"attachment; filename*=UTF-8''{encoded}"
     url = client.presigned_get_object(
         bucket_name=settings.MINIO_BUCKET,
         object_name=object_name,
         expires=timedelta(hours=expires_hours),
+        response_headers=response_headers or None,
     )
     scheme = "https" if settings.MINIO_USE_SSL else "http"
     internal_origin = f"{scheme}://{settings.MINIO_ENDPOINT}"

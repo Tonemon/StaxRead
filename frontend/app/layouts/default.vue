@@ -235,17 +235,31 @@ function isTeamManager(role: string) {
               variant="ghost"
               block
               :square="collapsed"
+              class="justify-start"
               to="/admin"
             />
             <UButton
               v-bind="{
                 label: collapsed ? undefined : displayName,
-                trailingIcon: collapsed ? undefined : 'i-lucide-log-out',
+                icon: 'i-lucide-user-circle',
               }"
               color="neutral"
               variant="ghost"
               block
               :square="collapsed"
+              class="justify-start"
+              to="/settings/account"
+            />
+            <UButton
+              v-bind="{
+                label: collapsed ? undefined : 'Logout',
+                icon: 'i-lucide-log-out',
+              }"
+              color="neutral"
+              variant="ghost"
+              block
+              :square="collapsed"
+              class="justify-start"
               @click="logout"
             />
           </div>

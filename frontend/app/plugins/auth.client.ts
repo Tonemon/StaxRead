@@ -9,15 +9,17 @@
 export default defineNuxtPlugin(async () => {
   const authStore = useAuthStore()
   const config = useRuntimeConfig()
+  const colorMode = useColorMode()
 
   if (!authStore.accessToken) return
 
   try {
-    const user = await $fetch<{ id: string; username: string; email: string; is_superuser: boolean }>(
+    const user = await $fetch<{ id: string; username: string; email: string; is_superuser: boolean; theme: 'system' | 'light' | 'dark' }>(
       `${config.public.apiBase}/auth/me/`,
       { headers: { Authorization: `Bearer ${authStore.accessToken}` } },
     )
     authStore.setUser(user)
+    colorMode.preference = user.theme ?? 'system'
   } catch {
     authStore.clear()
     await navigateTo('/login')

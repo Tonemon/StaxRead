@@ -11,9 +11,20 @@ class User(AbstractUser):
         FULL_NAME = "full_name", "Full name"
         FIRST_NAME = "first_name", "First name only"
 
+    class Theme(models.TextChoices):
+        SYSTEM = "system", "System"
+        LIGHT = "light", "Light"
+        DARK = "dark", "Dark"
+
     show_greeting = models.BooleanField(default=True)
     greeting_display = models.CharField(
         max_length=20,
         choices=GreetingDisplay.choices,
         default=GreetingDisplay.USERNAME,
     )
+    theme = models.CharField(
+        max_length=10,
+        choices=Theme.choices,
+        default=Theme.SYSTEM,
+    )
+    context_chunks = models.PositiveSmallIntegerField(default=1)

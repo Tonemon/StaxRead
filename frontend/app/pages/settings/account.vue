@@ -2,6 +2,22 @@
 definePageMeta({ middleware: 'auth', layout: 'admin' })
 const { $api } = useNuxtApp()
 const authStore = useAuthStore()
+const colorMode = useColorMode()
+
+const themeOptions = [
+  { label: 'System', value: 'system' },
+  { label: 'Light', value: 'light' },
+  { label: 'Dark', value: 'dark' },
+]
+
+const themePreference = ref<'system' | 'light' | 'dark'>('system')
+
+async function saveTheme(value: string) {
+  const theme = value as 'system' | 'light' | 'dark'
+  colorMode.preference = theme
+  themePreference.value = theme
+  await ($api as typeof $fetch)('/auth/me/', { method: 'PATCH', body: { theme } })
+}
 
 const profileForm = reactive({
   first_name: '',
@@ -38,9 +54,32 @@ const greetingDisplayOptions = [
 ]
 
 // Load current profile
+const searchForm = reactive({ context_chunks: 1 })
+const searchLoading = ref(false)
+const searchError = ref('')
+const searchSuccess = ref(false)
+
+async function saveSearch() {
+  searchLoading.value = true
+  searchError.value = ''
+  searchSuccess.value = false
+  try {
+    await ($api as typeof $fetch)('/auth/me/', {
+      method: 'PATCH',
+      body: { context_chunks: searchForm.context_chunks },
+    })
+    searchSuccess.value = true
+    setTimeout(() => { searchSuccess.value = false }, 3000)
+  } catch (e: unknown) {
+    searchError.value = (e as { data?: { detail?: string } })?.data?.detail || 'Failed to save search preferences.'
+  } finally {
+    searchLoading.value = false
+  }
+}
+
 const { data: profile } = await useFetch<{
   id: string; username: string; email: string; first_name: string; last_name: string;
-  show_greeting: boolean; greeting_display: string
+  show_greeting: boolean; greeting_display: string; theme: string; context_chunks: number
 }>('/auth/me/', { $fetch: $api as typeof $fetch })
 
 watch(profile, (p) => {
@@ -51,6 +90,8 @@ watch(profile, (p) => {
   profileForm.email = p.email || ''
   greetingForm.show_greeting = p.show_greeting
   greetingForm.greeting_display = p.greeting_display as 'username' | 'full_name' | 'first_name'
+  themePreference.value = (p.theme as 'system' | 'light' | 'dark') || 'system'
+  searchForm.context_chunks = p.context_chunks ?? 1
 }, { immediate: true })
 
 async function saveProfile() {
@@ -185,6 +226,46 @@ async function changePassword() {
           <template #footer>
             <div class="flex justify-end">
               <UButton :loading="greetingLoading" @click="saveGreeting">Save</UButton>
+            </div>
+          </template>
+        </UCard>
+
+        <!-- Appearance -->
+        <UCard>
+          <template #header>
+            <h2 class="text-base font-semibold text-highlighted">Appearance</h2>
+          </template>
+          <UFormField label="Theme">
+            <USelectMenu
+              v-model="themePreference"
+              :items="themeOptions"
+              value-key="value"
+              class="w-48"
+              @update:model-value="saveTheme"
+            />
+          </UFormField>
+        </UCard>
+
+        <!-- Search preferences -->
+        <UCard>
+          <template #header>
+            <h2 class="text-base font-semibold text-highlighted">Search</h2>
+          </template>
+          <UFormField label="Context chunks" description="Number of adjacent chunks shown around each search result (0–10).">
+            <UInput
+              v-model.number="searchForm.context_chunks"
+              type="number"
+              :min="0"
+              :max="10"
+              class="w-24"
+              @keydown.enter.prevent="saveSearch"
+            />
+          </UFormField>
+          <p v-if="searchError" class="text-sm text-error mt-3">{{ searchError }}</p>
+          <p v-if="searchSuccess" class="text-sm text-success mt-3">Search preferences saved.</p>
+          <template #footer>
+            <div class="flex justify-end">
+              <UButton :loading="searchLoading" @click="saveSearch">Save</UButton>
             </div>
           </template>
         </UCard>
