@@ -10,6 +10,15 @@ const themeOptions = [
   { label: 'Dark', value: 'dark' },
 ]
 
+const themePreference = ref<'system' | 'light' | 'dark'>('system')
+
+async function saveTheme(value: string) {
+  const theme = value as 'system' | 'light' | 'dark'
+  colorMode.preference = theme
+  themePreference.value = theme
+  await ($api as typeof $fetch)('/auth/me/', { method: 'PATCH', body: { theme } })
+}
+
 const profileForm = reactive({
   first_name: '',
   last_name: '',
@@ -47,7 +56,7 @@ const greetingDisplayOptions = [
 // Load current profile
 const { data: profile } = await useFetch<{
   id: string; username: string; email: string; first_name: string; last_name: string;
-  show_greeting: boolean; greeting_display: string
+  show_greeting: boolean; greeting_display: string; theme: string
 }>('/auth/me/', { $fetch: $api as typeof $fetch })
 
 watch(profile, (p) => {
@@ -58,6 +67,7 @@ watch(profile, (p) => {
   profileForm.email = p.email || ''
   greetingForm.show_greeting = p.show_greeting
   greetingForm.greeting_display = p.greeting_display as 'username' | 'full_name' | 'first_name'
+  themePreference.value = (p.theme as 'system' | 'light' | 'dark') || 'system'
 }, { immediate: true })
 
 async function saveProfile() {
@@ -203,10 +213,11 @@ async function changePassword() {
           </template>
           <UFormField label="Theme">
             <USelectMenu
-              v-model="colorMode.preference"
+              v-model="themePreference"
               :items="themeOptions"
               value-key="value"
               class="w-48"
+              @update:model-value="saveTheme"
             />
           </UFormField>
         </UCard>
