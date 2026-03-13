@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 
 from django.apps import AppConfig
@@ -16,6 +17,12 @@ class IngestionConfig(AppConfig):
             return
         # Celery beat only schedules tasks — it never runs embeddings
         if "beat" in sys.argv:
+            return
+        # Under Gunicorn, post_fork() in gunicorn.conf.py handles warmup in
+        # each worker after forking. Loading here (in the master) would produce
+        # C-extension state (ONNX runtime, PyTorch threads) that doesn't
+        # survive os.fork() cleanly.
+        if os.environ.get("DJANGO_RUNNING_UNDER_GUNICORN"):
             return
         try:
             from apps.ingestion.embeddings import warmup
