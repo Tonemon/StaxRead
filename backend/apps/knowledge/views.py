@@ -16,7 +16,7 @@ from apps.ingestion.tasks.pdf import ingest_pdf
 from apps.ingestion.tasks.epub import ingest_epub
 from apps.ingestion.tasks.git import ingest_git
 from apps.ingestion.storage import upload_file, get_presigned_url
-from apps.teams.access import get_accessible_kbs, MANAGER_ROLES
+from apps.teams.access import get_accessible_kbs, has_write_permission, MANAGER_ROLES
 from apps.teams.models import TeamMembership
 
 User = get_user_model()
@@ -139,6 +139,10 @@ class GitCredentialViewSet(ModelViewSet):
 class SourceViewSet(ModelViewSet):
     serializer_class = SourceSerializer
 
+    def _assert_write(self, request, kb):
+        if not has_write_permission(request.user, kb):
+            raise PermissionDenied("You do not have write access to this knowledge base.")
+
     def get_queryset(self):
         accessible_kb_ids = get_accessible_kbs(self.request.user).values_list("id", flat=True)
         qs = Source.objects.filter(kb__in=accessible_kb_ids).annotate(chunk_count=Count("chunks"))
@@ -147,7 +151,20 @@ class SourceViewSet(ModelViewSet):
             qs = qs.filter(kb=kb_id)
         return qs
 
+    def destroy(self, request, *args, **kwargs):
+        source = self.get_object()
+        self._assert_write(request, source.kb)
+        return super().destroy(request, *args, **kwargs)
+
     def create(self, request, *args, **kwargs):
+        kb_id = request.data.get("kb") or request.data.get("kb_id")
+        if kb_id:
+            try:
+                kb = KnowledgeBase.objects.get(pk=kb_id)
+                self._assert_write(request, kb)
+            except KnowledgeBase.DoesNotExist:
+                pass  # serializer validation will catch this
+
         source_type = request.data.get("source_type")
         file_obj = request.FILES.get("file")
 
