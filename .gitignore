@@ -44,3 +44,6 @@ certs/
 
 
 backend/model_cache/
+
+# Local dev SQLite databases
+*.sqlite3
