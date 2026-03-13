@@ -51,3 +51,12 @@ class SourceWritePermissionTest(TestCase):
         self.client.force_authenticate(user=self.writer)
         response = self.client.delete(f"/api/sources/{self.source.pk}/")
         self.assertEqual(response.status_code, 204)
+
+    def test_read_user_cannot_create_source(self):
+        self.client.force_authenticate(user=self.reader)
+        response = self.client.post("/api/sources/", {
+            "kb": str(self.kb.pk),
+            "title": "Blocked Doc",
+            "source_type": "pdf",
+        }, format="json")
+        self.assertEqual(response.status_code, 403)

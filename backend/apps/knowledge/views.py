@@ -157,19 +157,12 @@ class SourceViewSet(ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
     def create(self, request, *args, **kwargs):
-        kb_id = request.data.get("kb") or request.data.get("kb_id")
-        if kb_id:
-            try:
-                kb = KnowledgeBase.objects.get(pk=kb_id)
-                self._assert_write(request, kb)
-            except KnowledgeBase.DoesNotExist:
-                pass  # serializer validation will catch this
-
         source_type = request.data.get("source_type")
         file_obj = request.FILES.get("file")
 
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        self._assert_write(request, serializer.validated_data["kb"])
         source = serializer.save()
 
         # Handle file upload for PDF/EPUB
