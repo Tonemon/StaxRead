@@ -16,7 +16,7 @@ from apps.ingestion.tasks.pdf import ingest_pdf
 from apps.ingestion.tasks.epub import ingest_epub
 from apps.ingestion.tasks.git import ingest_git
 from apps.ingestion.storage import upload_file, get_presigned_url
-from apps.teams.access import get_accessible_kbs, has_write_permission, MANAGER_ROLES
+from apps.teams.access import get_accessible_kbs, has_write_permission, MANAGER_ROLES, WRITE_ROLES
 from apps.teams.models import TeamMembership
 
 User = get_user_model()
@@ -109,7 +109,7 @@ class KnowledgeBaseViewSet(ModelViewSet):
             team_user_ids = {str(tm.user_id) for tm in team_memberships}
             for tm in team_memberships:
                 effective_perm = (
-                    KBAccess.Permission.WRITE if tm.role in MANAGER_ROLES
+                    KBAccess.Permission.WRITE if tm.role in WRITE_ROLES
                     else KBAccess.Permission.READ
                 )
                 result.append({

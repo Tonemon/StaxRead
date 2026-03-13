@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from apps.knowledge.models import GitCredential, KnowledgeBase, KBAccess, Source
 from apps.teams.models import Team, TeamMembership
-from apps.teams.access import MANAGER_ROLES
+from apps.teams.access import MANAGER_ROLES, WRITE_ROLES
 
 
 class KnowledgeBaseSerializer(serializers.ModelSerializer):
@@ -40,13 +40,13 @@ class KnowledgeBaseSerializer(serializers.ModelSerializer):
             team = obj.team
             user_memberships = getattr(team, '_user_team_memberships', None)
             if user_memberships is not None:
-                if user_memberships and user_memberships[0].role in MANAGER_ROLES:
+                if user_memberships and user_memberships[0].role in WRITE_ROLES:
                     return KBAccess.Permission.WRITE
             else:
                 # Fallback if not prefetched (e.g., detail view)
                 try:
                     tm = TeamMembership.objects.get(team_id=obj.team_id, user=user)
-                    if tm.role in MANAGER_ROLES:
+                    if tm.role in WRITE_ROLES:
                         return KBAccess.Permission.WRITE
                 except TeamMembership.DoesNotExist:
                     pass
