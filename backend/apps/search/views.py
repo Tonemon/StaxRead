@@ -6,10 +6,11 @@ from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.knowledge.models import KnowledgeBase, Chunk
+from apps.knowledge.models import Chunk
 from apps.search.models import SearchHistory
 from apps.ingestion.embeddings import embed_query
 from apps.ingestion.qdrant_client import get_qdrant_client
+from apps.teams.access import get_accessible_kbs
 
 logger = logging.getLogger(__name__)
 
@@ -38,9 +39,7 @@ class SearchView(APIView):
 
         # Intersect with accessible KBs
         accessible_kb_ids = set(
-            str(pk) for pk in KnowledgeBase.objects.filter(
-                access_entries__user=request.user
-            ).values_list("id", flat=True)
+            str(pk) for pk in get_accessible_kbs(request.user).values_list("id", flat=True)
         )
 
         if requested_kb_ids:

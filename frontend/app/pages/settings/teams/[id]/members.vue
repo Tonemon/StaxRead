@@ -41,8 +41,10 @@ const roleOptions = computed(() => {
 })
 
 const pendingRoles = ref<Record<string, string>>({})
+const roleError = ref('')
 
 function onRoleChange(member: Member, newRole: string) {
+  roleError.value = ''
   pendingRoles.value[member.id] = newRole
 }
 
@@ -53,12 +55,17 @@ function hasPendingChange(member: Member) {
 async function saveRole(member: Member) {
   const newRole = pendingRoles.value[member.id]
   if (!newRole) return
-  await ($api as typeof $fetch)(`/teams/${teamId}/members/${member.id}/`, {
-    method: 'PATCH',
-    body: { role: newRole },
-  })
-  delete pendingRoles.value[member.id]
-  refresh()
+  roleError.value = ''
+  try {
+    await ($api as typeof $fetch)(`/teams/${teamId}/members/${member.id}/`, {
+      method: 'PATCH',
+      body: { role: newRole },
+    })
+    delete pendingRoles.value[member.id]
+    refresh()
+  } catch (e: any) {
+    roleError.value = e?.data?.detail ?? 'Failed to update role'
+  }
 }
 
 async function removeMember(member: Member) {
@@ -121,6 +128,7 @@ const ROLE_DESCRIPTIONS = [
 
         <div class="space-y-3">
           <h2 class="text-sm font-semibold text-dimmed uppercase tracking-wider">Users</h2>
+          <UAlert v-if="roleError" color="error" :description="roleError" />
           <div class="border border-default rounded-lg overflow-hidden">
             <table class="w-full text-sm">
               <thead>
