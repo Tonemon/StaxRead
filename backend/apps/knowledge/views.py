@@ -52,35 +52,94 @@ class KnowledgeBaseViewSet(ModelViewSet):
             return Response(status=status.HTTP_403_FORBIDDEN)
         return super().destroy(request, *args, **kwargs)
 
+    def _can_manage_kb(self, request, kb):
+        """True if the user may invite, remove, or change permissions on this KB."""
+        if kb.team_id:
+            return TeamMembership.objects.filter(
+                team_id=kb.team_id, user=request.user, role__in=MANAGER_ROLES
+            ).exists()
+        return kb.owner == request.user
+
     @action(detail=True, methods=["post"])
     def share(self, request, pk=None):
         kb = self.get_object()
-        if kb.owner != request.user:
+        if not self._can_manage_kb(request, kb):
             return Response(status=status.HTTP_403_FORBIDDEN)
         user_id = request.data.get("user_id")
         try:
             target_user = User.objects.get(pk=user_id)
         except User.DoesNotExist:
             return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+        # For team KBs: don't create a KBAccess entry for existing team members
+        if kb.team_id:
+            if TeamMembership.objects.filter(team_id=kb.team_id, user=target_user).exists():
+                return Response(
+                    {"detail": "User is already a team member and has implicit access."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
         KBAccess.objects.get_or_create(
             kb=kb, user=target_user,
-            defaults={"status": KBAccess.Status.PENDING},
+            defaults={"status": KBAccess.Status.PENDING, "permission": KBAccess.Permission.READ},
         )
         return Response({"detail": f"{target_user.username} has been invited."})
 
     @action(detail=True, methods=["get"])
     def members(self, request, pk=None):
         kb = self.get_object()
-        entries = (
-            KBAccess.objects.filter(kb=kb)
-            .exclude(user=kb.owner)
-            .select_related("user")
-        )
-        data = [
-            {"user_id": str(e.user.pk), "username": e.user.username, "status": e.status}
-            for e in entries
-        ]
-        return Response(data)
+        result = []
+
+        if kb.team_id:
+            team_memberships = (
+                TeamMembership.objects.filter(team_id=kb.team_id)
+                .select_related("user")
+            )
+            team_user_ids = {str(tm.user_id) for tm in team_memberships}
+            for tm in team_memberships:
+                effective_perm = (
+                    KBAccess.Permission.WRITE if tm.role in MANAGER_ROLES
+                    else KBAccess.Permission.READ
+                )
+                result.append({
+                    "user_id": str(tm.user.pk),
+                    "username": tm.user.username,
+                    "status": KBAccess.Status.ACCEPTED,
+                    "permission": effective_perm,
+                    "is_team_member": True,
+                    "team_role": tm.role,
+                })
+            # External users (KBAccess entries not in the team)
+            external = (
+                KBAccess.objects.filter(kb=kb)
+                .exclude(user__pk__in=team_user_ids)
+                .select_related("user")
+            )
+            for e in external:
+                result.append({
+                    "user_id": str(e.user.pk),
+                    "username": e.user.username,
+                    "status": e.status,
+                    "permission": e.permission,
+                    "is_team_member": False,
+                    "team_role": None,
+                })
+        else:
+            # Personal KB: all KBAccess entries except the owner
+            entries = (
+                KBAccess.objects.filter(kb=kb)
+                .exclude(user=kb.owner)
+                .select_related("user")
+            )
+            for e in entries:
+                result.append({
+                    "user_id": str(e.user.pk),
+                    "username": e.user.username,
+                    "status": e.status,
+                    "permission": e.permission,
+                    "is_team_member": False,
+                    "team_role": None,
+                })
+
+        return Response(result)
 
     @action(detail=True, methods=["post"])
     def leave(self, request, pk=None):
@@ -96,11 +155,36 @@ class KnowledgeBaseViewSet(ModelViewSet):
     @action(detail=True, methods=["post"])
     def unshare(self, request, pk=None):
         kb = self.get_object()
-        if kb.owner != request.user:
+        if not self._can_manage_kb(request, kb):
             return Response(status=status.HTTP_403_FORBIDDEN)
         user_id = request.data.get("user_id")
         KBAccess.objects.filter(kb=kb, user__pk=user_id).delete()
         return Response({"detail": "Access removed."})
+
+    @action(detail=True, methods=["post"])
+    def set_permission(self, request, pk=None):
+        kb = self.get_object()
+        if not self._can_manage_kb(request, kb):
+            return Response(status=status.HTTP_403_FORBIDDEN)
+        user_id = request.data.get("user_id")
+        permission = request.data.get("permission")
+        if permission not in (KBAccess.Permission.READ, KBAccess.Permission.WRITE):
+            return Response(
+                {"detail": "permission must be 'read' or 'write'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            access = KBAccess.objects.get(
+                kb=kb, user__pk=user_id, status=KBAccess.Status.ACCEPTED
+            )
+        except KBAccess.DoesNotExist:
+            return Response(
+                {"detail": "No accepted access entry found for this user."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        access.permission = permission
+        access.save()
+        return Response({"detail": "Permission updated."})
 
 
 class KBInvitationViewSet(mixins.ListModelMixin, GenericViewSet):
