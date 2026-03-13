@@ -211,16 +211,26 @@ async function share() {
 }
 
 async function removeMember(userId: string) {
-  await ($api as typeof $fetch)(`/knowledge-bases/${kbId}/unshare/`, { method: 'POST', body: { user_id: userId } })
-  refreshMembers()
+  shareError.value = ''
+  try {
+    await ($api as typeof $fetch)(`/knowledge-bases/${kbId}/unshare/`, { method: 'POST', body: { user_id: userId } })
+    refreshMembers()
+  } catch {
+    shareError.value = 'Failed to remove member'
+  }
 }
 
 async function setPermission(userId: string, permission: 'read' | 'write') {
-  await ($api as typeof $fetch)(`/knowledge-bases/${kbId}/set-permission/`, {
-    method: 'POST',
-    body: { user_id: userId, permission },
-  })
-  refreshMembers()
+  shareError.value = ''
+  try {
+    await ($api as typeof $fetch)(`/knowledge-bases/${kbId}/set-permission/`, {
+      method: 'POST',
+      body: { user_id: userId, permission },
+    })
+    refreshMembers()
+  } catch {
+    shareError.value = 'Failed to update permission'
+  }
 }
 </script>
 
@@ -308,7 +318,7 @@ async function setPermission(userId: string, permission: 'read' | 'write') {
           <div>
             <div class="flex items-center justify-between mb-4">
               <h2 class="text-lg font-semibold text-highlighted">Sources</h2>
-              <NuxtLink :to="`/settings/knowledge-bases/${kbId}/sources`">
+              <NuxtLink v-if="canManage" :to="`/settings/knowledge-bases/${kbId}/sources`">
                 <UButton size="sm" icon="i-lucide-plus" color="neutral" variant="outline">Add Source</UButton>
               </NuxtLink>
             </div>
@@ -394,6 +404,7 @@ async function setPermission(userId: string, permission: 'read' | 'write') {
                           @click="downloadSource(source.id)"
                         />
                         <UButton
+                          v-if="canManage"
                           icon="i-lucide-trash-2"
                           size="xs"
                           color="error"
@@ -493,7 +504,10 @@ async function setPermission(userId: string, permission: 'read' | 'write') {
                 </div>
               </div>
             </div>
-            <p v-else-if="canManage" class="mt-3 text-sm text-dimmed">No members yet. Share this knowledge base with other users.</p>
+            <p v-else class="mt-3 text-sm text-dimmed">
+              <template v-if="canManage">No one has been invited yet.</template>
+              <template v-else>No additional members.</template>
+            </p>
           </div>
 
         </UContainer>
