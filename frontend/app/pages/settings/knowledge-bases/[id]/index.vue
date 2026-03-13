@@ -5,7 +5,7 @@ const { $api } = useNuxtApp()
 const kbId = route.params.id as string
 const { setRefresh, clearRefresh } = useKeyboardShortcuts()
 
-interface KB { id: string; name: string; description: string; owner_username: string; team: string | null; team_name: string | null }
+interface KB { id: string; name: string; description: string; owner_username: string; team: string | null; team_name: string | null; user_permission: 'read' | 'write' }
 interface Source {
   id: string; title: string; source_type: string; status: string
   file_size_bytes: number | null; chunk_count: number
@@ -174,12 +174,21 @@ async function downloadSource(id: string) {
 }
 
 // ── Share section ──────────────────────────────────────────────────────────
-interface Member { user_id: string; username: string; status: 'pending' | 'accepted' }
+interface Member {
+  user_id: string
+  username: string
+  status: 'pending' | 'accepted'
+  permission: 'read' | 'write'
+  is_team_member: boolean
+  team_role: string | null
+}
 
 const { data: members, refresh: refreshMembers } = await useFetch<Member[]>(`/knowledge-bases/${kbId}/members/`, {
   $fetch: $api as typeof $fetch,
   default: () => [] as Member[],
 })
+
+const canManage = computed(() => kb.value?.user_permission === 'write')
 
 const shareUsername = ref('')
 const shareError = ref('')
@@ -203,6 +212,14 @@ async function share() {
 
 async function removeMember(userId: string) {
   await ($api as typeof $fetch)(`/knowledge-bases/${kbId}/unshare/`, { method: 'POST', body: { user_id: userId } })
+  refreshMembers()
+}
+
+async function setPermission(userId: string, permission: 'read' | 'write') {
+  await ($api as typeof $fetch)(`/knowledge-bases/${kbId}/set-permission/`, {
+    method: 'POST',
+    body: { user_id: userId, permission },
+  })
   refreshMembers()
 }
 </script>
@@ -430,24 +447,43 @@ async function removeMember(userId: string) {
           <!-- Share Access -->
           <div>
             <h2 class="text-lg font-semibold text-highlighted mb-3">Share Access</h2>
-            <div class="flex gap-2">
-              <UInput v-model="shareUsername" placeholder="Username" size="sm" class="flex-1" @keydown.enter="share" />
-              <UButton size="sm" :disabled="!shareUsername" @click="share">Share</UButton>
-            </div>
-            <UAlert v-if="shareSuccess" color="success" :description="shareSuccess" class="mt-2" />
-            <UAlert v-if="shareError" color="error" :description="shareError" class="mt-2" />
+            <template v-if="canManage">
+              <div class="flex gap-2">
+                <UInput v-model="shareUsername" placeholder="Username" size="sm" class="flex-1" @keydown.enter="share" />
+                <UButton size="sm" :disabled="!shareUsername" @click="share">Share</UButton>
+              </div>
+              <UAlert v-if="shareSuccess" color="success" :description="shareSuccess" class="mt-2" />
+              <UAlert v-if="shareError" color="error" :description="shareError" class="mt-2" />
+            </template>
             <div v-if="members?.length" class="mt-3 space-y-1.5">
               <div
                 v-for="m in members"
                 :key="m.user_id"
                 class="flex items-center justify-between text-sm py-1"
               >
-                <span class="text-default">{{ m.username }}</span>
                 <div class="flex items-center gap-2">
-                  <UBadge :color="m.status === 'accepted' ? 'success' : 'info'" variant="subtle" size="xs">
-                    {{ m.status === 'accepted' ? 'Accepted' : 'Invited' }}
-                  </UBadge>
+                  <span class="text-default">{{ m.username }}</span>
+                  <UBadge v-if="m.team_role" color="neutral" variant="subtle" size="xs">{{ m.team_role }}</UBadge>
+                  <UBadge v-if="m.status === 'pending'" color="info" variant="subtle" size="xs">Invited</UBadge>
+                </div>
+                <div class="flex items-center gap-2">
+                  <USelectMenu
+                    v-if="!m.is_team_member && m.status === 'accepted' && canManage"
+                    :model-value="m.permission"
+                    :items="[{ label: 'Read', value: 'read' }, { label: 'Read + Write', value: 'write' }]"
+                    value-key="value"
+                    size="xs"
+                    class="w-32"
+                    @update:model-value="setPermission(m.user_id, $event as 'read' | 'write')"
+                  />
+                  <UBadge
+                    v-else
+                    :color="m.permission === 'write' ? 'success' : 'neutral'"
+                    variant="subtle"
+                    size="xs"
+                  >{{ m.permission === 'write' ? 'Read + Write' : 'Read' }}</UBadge>
                   <UButton
+                    v-if="!m.is_team_member && canManage"
                     icon="i-lucide-user-minus"
                     size="xs"
                     color="error"
@@ -457,6 +493,7 @@ async function removeMember(userId: string) {
                 </div>
               </div>
             </div>
+            <p v-else-if="canManage" class="mt-3 text-sm text-dimmed">No members yet. Share this knowledge base with other users.</p>
           </div>
 
         </UContainer>
