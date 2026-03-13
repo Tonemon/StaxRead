@@ -7,18 +7,54 @@ MANAGER_ROLES = ("manager", "admin", "owner")
 def get_accessible_kbs(user):
     """
     Return a KnowledgeBase queryset containing all KBs the user can access:
-      1. Personal KBs: user is owner (auto KBAccess created on save)
-      2. Team KBs (manager+): implicit via TeamMembership role
-      3. Team/personal KBs with explicit KBAccess (guest/member/external/personal share)
-
-    Cases 1 and 3 are both covered by the KBAccess row check; case 2 is explicit.
+      1. Personal KBs: user has an accepted KBAccess entry (owner auto-gets one on create)
+      2. Team KBs: user is any member of the team (all roles get read access)
     """
     from apps.teams.models import TeamMembership
-    manager_team_ids = TeamMembership.objects.filter(
-        user=user, role__in=MANAGER_ROLES
+    member_team_ids = TeamMembership.objects.filter(
+        user=user
     ).values_list("team_id", flat=True)
 
     return KnowledgeBase.objects.filter(
         Q(access_entries__user=user, access_entries__status=KBAccess.Status.ACCEPTED)
-        | Q(team__in=manager_team_ids)
+        | Q(team__in=member_team_ids)
     ).distinct()
+
+
+def has_write_permission(user, kb) -> bool:
+    """
+    Return True if the user may add or delete sources on this KB.
+
+    Personal KB:  owner always has write; invited users need permission='write'.
+    Team KB:      team role manager/admin/owner → write; all others → read.
+                  External users (KBAccess entry, not team members) use their explicit permission.
+    """
+    from apps.teams.models import TeamMembership
+
+    if kb.team_id:
+        # Team members: role determines write access
+        try:
+            tm = TeamMembership.objects.get(team_id=kb.team_id, user=user)
+            if tm.role in MANAGER_ROLES:
+                return True
+        except TeamMembership.DoesNotExist:
+            pass
+        # External user with explicit KBAccess (not a team member)
+        try:
+            access = KBAccess.objects.get(
+                kb=kb, user=user, status=KBAccess.Status.ACCEPTED
+            )
+            return access.permission == KBAccess.Permission.WRITE
+        except KBAccess.DoesNotExist:
+            return False
+    else:
+        # Personal KB: owner always has write
+        if kb.owner_id == user.pk:
+            return True
+        try:
+            access = KBAccess.objects.get(
+                kb=kb, user=user, status=KBAccess.Status.ACCEPTED
+            )
+            return access.permission == KBAccess.Permission.WRITE
+        except KBAccess.DoesNotExist:
+            return False
