@@ -3,7 +3,7 @@ import os
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.db.models import Count
+from django.db.models import Count, Prefetch
 from rest_framework import mixins, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
@@ -26,10 +26,23 @@ class KnowledgeBaseViewSet(ModelViewSet):
     serializer_class = KnowledgeBaseSerializer
 
     def get_queryset(self):
-        qs = get_accessible_kbs(self.request.user)
+        user = self.request.user
+        qs = get_accessible_kbs(user)
         team_id = self.request.query_params.get("team")
         if team_id:
             qs = qs.filter(team_id=team_id)
+        qs = qs.prefetch_related(
+            Prefetch(
+                'access_entries',
+                queryset=KBAccess.objects.filter(user=user, status=KBAccess.Status.ACCEPTED),
+                to_attr='_user_access_entries',
+            ),
+            Prefetch(
+                'team__memberships',
+                queryset=TeamMembership.objects.filter(user=user),
+                to_attr='_user_team_memberships',
+            ),
+        )
         return qs
 
     def perform_create(self, serializer):

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from apps.knowledge.models import GitCredential, KnowledgeBase, KBAccess, Source
-from apps.teams.models import Team
+from apps.teams.models import Team, TeamMembership
 from apps.teams.access import MANAGER_ROLES
 
 
@@ -28,36 +28,51 @@ class KnowledgeBaseSerializer(serializers.ModelSerializer):
 
     def get_user_permission(self, obj) -> str:
         request = self.context.get("request")
-        if not request or not request.user or not request.user.is_authenticated:
+        if not request or not request.user.is_authenticated:
             return KBAccess.Permission.READ
 
         user = request.user
 
         if obj.team_id:
-            from apps.teams.models import TeamMembership
-            try:
-                tm = TeamMembership.objects.get(team_id=obj.team_id, user=user)
-                if tm.role in MANAGER_ROLES:
+            # Use prefetched team memberships (to_attr='_user_team_memberships' on obj.team)
+            team = obj.team
+            user_memberships = getattr(team, '_user_team_memberships', None)
+            if user_memberships is not None:
+                if user_memberships and user_memberships[0].role in MANAGER_ROLES:
                     return KBAccess.Permission.WRITE
-            except TeamMembership.DoesNotExist:
-                pass
-            try:
-                access = KBAccess.objects.get(
-                    kb=obj, user=user, status=KBAccess.Status.ACCEPTED
-                )
-                return access.permission
-            except KBAccess.DoesNotExist:
-                return KBAccess.Permission.READ
+            else:
+                # Fallback if not prefetched (e.g., detail view)
+                try:
+                    tm = TeamMembership.objects.get(team_id=obj.team_id, user=user)
+                    if tm.role in MANAGER_ROLES:
+                        return KBAccess.Permission.WRITE
+                except TeamMembership.DoesNotExist:
+                    pass
+
+            # Check explicit KBAccess for external users
+            user_access = getattr(obj, '_user_access_entries', None)
+            if user_access is not None:
+                return user_access[0].permission if user_access else KBAccess.Permission.READ
+            else:
+                # Fallback if not prefetched
+                try:
+                    access = KBAccess.objects.get(kb=obj, user=user, status=KBAccess.Status.ACCEPTED)
+                    return access.permission
+                except KBAccess.DoesNotExist:
+                    return KBAccess.Permission.READ
         else:
             if obj.owner_id == user.pk:
                 return KBAccess.Permission.WRITE
-            try:
-                access = KBAccess.objects.get(
-                    kb=obj, user=user, status=KBAccess.Status.ACCEPTED
-                )
-                return access.permission
-            except KBAccess.DoesNotExist:
-                return KBAccess.Permission.READ
+            user_access = getattr(obj, '_user_access_entries', None)
+            if user_access is not None:
+                return user_access[0].permission if user_access else KBAccess.Permission.READ
+            else:
+                # Fallback if not prefetched
+                try:
+                    access = KBAccess.objects.get(kb=obj, user=user, status=KBAccess.Status.ACCEPTED)
+                    return access.permission
+                except KBAccess.DoesNotExist:
+                    return KBAccess.Permission.READ
 
 
 class KBInvitationSerializer(serializers.ModelSerializer):
