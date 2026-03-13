@@ -317,15 +317,19 @@ class SourceViewSet(ModelViewSet):
     @action(detail=True, methods=["get"])
     def document(self, request, pk=None):
         source = self.get_object()  # raises 404 if not in queryset (access enforced)
+        # ?download=1 → Content-Disposition: attachment (saves with title as filename).
+        # Without it → no Content-Disposition override so browsers render inline.
+        download = request.query_params.get("download") == "1"
+        filename = f"{source.title}.{{ext}}" if download else ""
 
         if source.source_type == Source.SourceType.PDF:
             ext = os.path.splitext(source.storage_key)[1].lstrip(".")
-            url = get_presigned_url(source.pk, ext, filename=f"{source.title}.{ext}")
+            url = get_presigned_url(source.pk, ext, filename=filename.format(ext=ext))
             return Response({"url": url, "source_type": source.source_type})
 
         elif source.source_type == Source.SourceType.EPUB:
             ext = os.path.splitext(source.storage_key)[1].lstrip(".")
-            url = get_presigned_url(source.pk, ext, filename=f"{source.title}.{ext}")
+            url = get_presigned_url(source.pk, ext, filename=filename.format(ext=ext))
             return Response({"url": url, "source_type": source.source_type})
 
         elif source.source_type == Source.SourceType.GIT:

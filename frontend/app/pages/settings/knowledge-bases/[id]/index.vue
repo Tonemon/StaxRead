@@ -169,7 +169,7 @@ async function deleteSource(id: string) {
 }
 
 async function downloadSource(id: string) {
-  const data = await ($api as typeof $fetch)<{ url: string }>(`/sources/${id}/document/`)
+  const data = await ($api as typeof $fetch)<{ url: string }>(`/sources/${id}/document/?download=1`)
   window.open(data.url, '_blank')
 }
 
