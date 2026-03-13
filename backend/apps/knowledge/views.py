@@ -182,7 +182,7 @@ class KnowledgeBaseViewSet(ModelViewSet):
         KBAccess.objects.filter(kb=kb, user__pk=user_id).delete()
         return Response({"detail": "Access removed."})
 
-    @action(detail=True, methods=["post"])
+    @action(detail=True, methods=["post"], url_path="set-permission")
     def set_permission(self, request, pk=None):
         kb = self.get_object()
         if not self._can_manage_kb(request, kb):
