@@ -158,6 +158,14 @@ class KnowledgeBaseViewSet(ModelViewSet):
         if not self._can_manage_kb(request, kb):
             return Response(status=status.HTTP_403_FORBIDDEN)
         user_id = request.data.get("user_id")
+        if not user_id:
+            return Response({"detail": "user_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+        if kb.team_id:
+            if TeamMembership.objects.filter(team_id=kb.team_id, user__pk=user_id).exists():
+                return Response(
+                    {"detail": "Cannot remove a team member via unshare. Remove them from the team instead."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
         KBAccess.objects.filter(kb=kb, user__pk=user_id).delete()
         return Response({"detail": "Access removed."})
 
@@ -167,6 +175,8 @@ class KnowledgeBaseViewSet(ModelViewSet):
         if not self._can_manage_kb(request, kb):
             return Response(status=status.HTTP_403_FORBIDDEN)
         user_id = request.data.get("user_id")
+        if not user_id:
+            return Response({"detail": "user_id is required."}, status=status.HTTP_400_BAD_REQUEST)
         permission = request.data.get("permission")
         if permission not in (KBAccess.Permission.READ, KBAccess.Permission.WRITE):
             return Response(
@@ -183,7 +193,7 @@ class KnowledgeBaseViewSet(ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
         access.permission = permission
-        access.save()
+        access.save(update_fields=["permission"])
         return Response({"detail": "Permission updated."})
 
 
