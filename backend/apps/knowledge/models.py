@@ -39,7 +39,9 @@ class KnowledgeBase(UUIDModel):
         is_new = self._state.adding
         super().save(*args, **kwargs)
         if is_new and self.team_id is None:
-            KBAccess.objects.create(kb=self, user=self.owner)
+            KBAccess.objects.create(
+                kb=self, user=self.owner, permission=KBAccess.Permission.WRITE
+            )
 
     def __str__(self) -> str:
         return f"{self.name} ({self.owner})"
@@ -49,6 +51,10 @@ class KBAccess(models.Model):
     class Status(models.TextChoices):
         PENDING = "pending", "Pending"
         ACCEPTED = "accepted", "Accepted"
+
+    class Permission(models.TextChoices):
+        READ = "read", "Read"
+        WRITE = "write", "Write"
 
     kb = models.ForeignKey(
         KnowledgeBase, on_delete=models.CASCADE, related_name="access_entries"
@@ -61,13 +67,16 @@ class KBAccess(models.Model):
     status = models.CharField(
         max_length=10, choices=Status.choices, default=Status.ACCEPTED
     )
+    permission = models.CharField(
+        max_length=5, choices=Permission.choices, default=Permission.READ
+    )
     granted_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         unique_together = [("kb", "user")]
 
     def __str__(self) -> str:
-        return f"{self.user} → {self.kb}"
+        return f"{self.user} → {self.kb} ({self.permission})"
 
 
 class Source(UUIDModel):
