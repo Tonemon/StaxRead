@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from apps.knowledge.models import GitCredential, KnowledgeBase, KBAccess, Source
 from apps.teams.models import Team
+from apps.teams.access import MANAGER_ROLES
 
 
 class KnowledgeBaseSerializer(serializers.ModelSerializer):
@@ -9,6 +10,7 @@ class KnowledgeBaseSerializer(serializers.ModelSerializer):
         queryset=Team.objects.all(), allow_null=True, required=False, default=None
     )
     team_name = serializers.CharField(source="team.name", read_only=True, default=None)
+    user_permission = serializers.SerializerMethodField()
 
     class Meta:
         model = KnowledgeBase
@@ -16,9 +18,46 @@ class KnowledgeBaseSerializer(serializers.ModelSerializer):
             "id", "name", "description",
             "owner", "owner_username",
             "team", "team_name",
+            "user_permission",
             "created_at", "updated_at",
         ]
-        read_only_fields = ["id", "owner", "owner_username", "team_name", "created_at", "updated_at"]
+        read_only_fields = [
+            "id", "owner", "owner_username", "team_name",
+            "user_permission", "created_at", "updated_at",
+        ]
+
+    def get_user_permission(self, obj) -> str:
+        request = self.context.get("request")
+        if not request or not request.user or not request.user.is_authenticated:
+            return KBAccess.Permission.READ
+
+        user = request.user
+
+        if obj.team_id:
+            from apps.teams.models import TeamMembership
+            try:
+                tm = TeamMembership.objects.get(team_id=obj.team_id, user=user)
+                if tm.role in MANAGER_ROLES:
+                    return KBAccess.Permission.WRITE
+            except TeamMembership.DoesNotExist:
+                pass
+            try:
+                access = KBAccess.objects.get(
+                    kb=obj, user=user, status=KBAccess.Status.ACCEPTED
+                )
+                return access.permission
+            except KBAccess.DoesNotExist:
+                return KBAccess.Permission.READ
+        else:
+            if obj.owner_id == user.pk:
+                return KBAccess.Permission.WRITE
+            try:
+                access = KBAccess.objects.get(
+                    kb=obj, user=user, status=KBAccess.Status.ACCEPTED
+                )
+                return access.permission
+            except KBAccess.DoesNotExist:
+                return KBAccess.Permission.READ
 
 
 class KBInvitationSerializer(serializers.ModelSerializer):
