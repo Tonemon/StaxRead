@@ -5,7 +5,7 @@ const { $api } = useNuxtApp()
 const kbId = route.params.id as string
 const { setRefresh, clearRefresh } = useKeyboardShortcuts()
 
-interface KB { id: string; name: string; description: string; owner_username: string; team: string | null; team_name: string | null; user_permission: 'read' | 'write' }
+interface KB { id: string; name: string; description: string; owner_username: string; team: string | null; team_name: string | null; user_permission: 'read' | 'write'; can_manage_access: boolean }
 interface Source {
   id: string; title: string; source_type: string; status: string
   file_size_bytes: number | null; chunk_count: number
@@ -189,6 +189,7 @@ const { data: members, refresh: refreshMembers } = await useFetch<Member[]>(`/kn
 })
 
 const canManage = computed(() => kb.value?.user_permission === 'write')
+const canManageAccess = computed(() => kb.value?.can_manage_access === true)
 
 const shareUsername = ref('')
 const shareError = ref('')
@@ -458,7 +459,7 @@ async function setPermission(userId: string, permission: 'read' | 'write') {
           <!-- Share Access -->
           <div>
             <h2 class="text-lg font-semibold text-highlighted mb-3">Share Access</h2>
-            <template v-if="canManage">
+            <template v-if="canManageAccess">
               <div class="flex gap-2">
                 <UInput v-model="shareUsername" placeholder="Username" size="sm" class="flex-1" @keydown.enter="share" />
                 <UButton size="sm" :disabled="!shareUsername" @click="share">Share</UButton>
@@ -479,7 +480,7 @@ async function setPermission(userId: string, permission: 'read' | 'write') {
                 </div>
                 <div class="flex items-center gap-2">
                   <USelectMenu
-                    v-if="!m.is_team_member && m.status === 'accepted' && canManage"
+                    v-if="!m.is_team_member && m.status === 'accepted' && canManageAccess"
                     :model-value="m.permission"
                     :items="[{ label: 'Read', value: 'read' }, { label: 'Read + Write', value: 'write' }]"
                     value-key="value"
@@ -494,7 +495,7 @@ async function setPermission(userId: string, permission: 'read' | 'write') {
                     size="xs"
                   >{{ m.permission === 'write' ? 'Read + Write' : 'Read' }}</UBadge>
                   <UButton
-                    v-if="!m.is_team_member && canManage"
+                    v-if="!m.is_team_member && canManageAccess"
                     icon="i-lucide-user-minus"
                     size="xs"
                     color="error"
@@ -505,7 +506,7 @@ async function setPermission(userId: string, permission: 'read' | 'write') {
               </div>
             </div>
             <p v-else class="mt-3 text-sm text-dimmed">
-              <template v-if="canManage">No one has been invited yet.</template>
+              <template v-if="canManageAccess">No one has been invited yet.</template>
               <template v-else>No additional members.</template>
             </p>
           </div>

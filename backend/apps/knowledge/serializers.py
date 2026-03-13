@@ -11,6 +11,7 @@ class KnowledgeBaseSerializer(serializers.ModelSerializer):
     )
     team_name = serializers.CharField(source="team.name", read_only=True, default=None)
     user_permission = serializers.SerializerMethodField()
+    can_manage_access = serializers.SerializerMethodField()
 
     class Meta:
         model = KnowledgeBase
@@ -19,11 +20,12 @@ class KnowledgeBaseSerializer(serializers.ModelSerializer):
             "owner", "owner_username",
             "team", "team_name",
             "user_permission",
+            "can_manage_access",
             "created_at", "updated_at",
         ]
         read_only_fields = [
             "id", "owner", "owner_username", "team_name",
-            "user_permission", "created_at", "updated_at",
+            "user_permission", "can_manage_access", "created_at", "updated_at",
         ]
 
     def get_user_permission(self, obj) -> str:
@@ -73,6 +75,23 @@ class KnowledgeBaseSerializer(serializers.ModelSerializer):
                     return access.permission
                 except KBAccess.DoesNotExist:
                     return KBAccess.Permission.READ
+
+
+    def get_can_manage_access(self, obj) -> bool:
+        """True if the user may invite, remove, or change permissions on this KB."""
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return False
+        user = request.user
+        if obj.team_id:
+            team = obj.team
+            user_memberships = getattr(team, '_user_team_memberships', None)
+            if user_memberships is not None:
+                return bool(user_memberships and user_memberships[0].role in MANAGER_ROLES)
+            return TeamMembership.objects.filter(
+                team_id=obj.team_id, user=user, role__in=MANAGER_ROLES
+            ).exists()
+        return obj.owner_id == user.pk
 
 
 class KBInvitationSerializer(serializers.ModelSerializer):
