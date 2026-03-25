@@ -31,7 +31,7 @@ def test_full_search_flow():
     bob = User.objects.create_user(username="bob", password="pass")
     KBAccess.objects.create(kb=kb, user=bob)
 
-    # --- Bob logs in and searches ---
+    # --- Bob logs in; the access_token cookie is stored in the client automatically ---
     bob_client = APIClient()
     login_resp = bob_client.post(
         reverse("token_obtain_pair"),
@@ -39,7 +39,6 @@ def test_full_search_flow():
         format="json",
     )
     assert login_resp.status_code == 200
-    bob_client.credentials(HTTP_AUTHORIZATION=f"Bearer {login_resp.data['access']}")
 
     mock_point = MagicMock()
     mock_point.id = str(chunk.pk)
@@ -73,7 +72,7 @@ def test_full_search_flow():
 
 @pytest.mark.django_db
 def test_me_endpoint_after_login():
-    """Login flow returns tokens; /me/ returns correct user info."""
+    """Login sets cookies; /me/ returns correct user info."""
     user = User.objects.create_user(
         username="charlie", password="pass", email="charlie@example.com"
     )
@@ -87,9 +86,7 @@ def test_me_endpoint_after_login():
         format="json",
     )
     assert login_resp.status_code == 200
-    token = login_resp.data["access"]
 
-    client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
     me_resp = client.get(reverse("me"))
     assert me_resp.status_code == 200
     assert me_resp.data["username"] == "charlie"
@@ -114,7 +111,7 @@ def test_kb_access_enforced_at_search():
         {"username": "dave", "password": "pass"},
         format="json",
     )
-    dave_client.credentials(HTTP_AUTHORIZATION=f"Bearer {login_resp.data['access']}")
+    assert login_resp.status_code == 200
 
     with (
         patch(

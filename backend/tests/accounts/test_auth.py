@@ -31,15 +31,16 @@ def superuser(db):
 
 @pytest.mark.django_db
 class TestLogin:
-    def test_login_returns_access_and_refresh_tokens(self, api_client, user):
+    def test_login_sets_auth_cookies(self, api_client, user):
         response = api_client.post(
             reverse("token_obtain_pair"),
             {"username": "testuser", "password": "securepassword123"},
             format="json",
         )
         assert response.status_code == 200
-        assert "access" in response.data
-        assert "refresh" in response.data
+        assert response.data == {"detail": "Login successful."}
+        assert "access_token" in response.cookies
+        assert "refresh_token" in response.cookies
 
     def test_login_wrong_password_rejected(self, api_client, user):
         response = api_client.post(
@@ -60,54 +61,38 @@ class TestLogin:
 
 @pytest.mark.django_db
 class TestRefresh:
-    def test_refresh_returns_new_access_token(self, api_client, user):
-        login = api_client.post(
+    def test_refresh_rotates_access_cookie(self, api_client, user):
+        # Login stores the refresh_token cookie in the client's cookie jar.
+        api_client.post(
             reverse("token_obtain_pair"),
             {"username": "testuser", "password": "securepassword123"},
             format="json",
         )
-        refresh = login.data["refresh"]
-        response = api_client.post(
-            reverse("token_refresh"),
-            {"refresh": refresh},
-            format="json",
-        )
+        response = api_client.post(reverse("token_refresh"))
         assert response.status_code == 200
-        assert "access" in response.data
+        assert response.data == {"detail": "Token refreshed."}
+        assert "access_token" in response.cookies
 
     def test_invalid_refresh_token_rejected(self, api_client, db):
-        response = api_client.post(
-            reverse("token_refresh"),
-            {"refresh": "notarealtoken"},
-            format="json",
-        )
+        api_client.cookies["refresh_token"] = "notarealtoken"
+        response = api_client.post(reverse("token_refresh"))
         assert response.status_code == 401
 
 
 @pytest.mark.django_db
 class TestLogout:
     def test_logout_blacklists_refresh_token(self, api_client, user):
-        login = api_client.post(
+        api_client.post(
             reverse("token_obtain_pair"),
             {"username": "testuser", "password": "securepassword123"},
             format="json",
         )
-        refresh = login.data["refresh"]
-        response = api_client.post(
-            reverse("token_blacklist"),
-            {"refresh": refresh},
-            format="json",
-        )
-        assert response.status_code == 200
+        response = api_client.post(reverse("token_blacklist"))
+        assert response.status_code == 204
 
-        # Blacklisted token should now be rejected
-        retry = api_client.post(
-            reverse("token_refresh"),
-            {"refresh": refresh},
-            format="json",
-        )
+        # Blacklisted token must be rejected on next refresh attempt.
+        retry = api_client.post(reverse("token_refresh"))
         assert retry.status_code == 401
-
 
 
 @pytest.mark.django_db
