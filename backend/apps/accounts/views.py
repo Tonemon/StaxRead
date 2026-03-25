@@ -1,17 +1,37 @@
 from django.contrib.auth import get_user_model
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from rest_framework_simplejwt.views import TokenObtainPairView
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from rest_framework_simplejwt.exceptions import AuthenticationFailed
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import AuthenticationFailed, TokenError
 
 from apps.common.permissions import IsSuperuser
 from apps.accounts.serializers import UserSerializer, ProfileSerializer, PasswordChangeSerializer
 
 User = get_user_model()
+
+
+def _set_auth_cookies(response, access, refresh=None):
+    response.set_cookie(
+        'access_token', access,
+        max_age=15 * 60, httponly=True, secure=True, samesite='Lax', path='/',
+    )
+    if refresh is not None:
+        response.set_cookie(
+            'refresh_token', refresh,
+            max_age=7 * 24 * 3600, httponly=True, secure=True, samesite='Lax', path='/api/auth/',
+        )
+
+
+def _clear_auth_cookies(response):
+    response.delete_cookie('access_token', path='/')
+    response.delete_cookie('refresh_token', path='/api/auth/')
 
 
 class StaxReadTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -33,6 +53,68 @@ class StaxReadTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 class StaxReadTokenObtainPairView(TokenObtainPairView):
     serializer_class = StaxReadTokenObtainPairSerializer
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class CookieTokenObtainPairView(APIView):
+    permission_classes = []
+    authentication_classes = []
+
+    def post(self, request):
+        serializer = StaxReadTokenObtainPairSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        response = Response({'detail': 'Login successful.'})
+        _set_auth_cookies(response, str(data['access']), str(data['refresh']))
+        return response
+
+
+class CookieTokenRefreshView(APIView):
+    permission_classes = []
+    authentication_classes = []
+
+    def post(self, request):
+        raw_refresh = request.COOKIES.get('refresh_token')
+        if not raw_refresh:
+            return Response({'detail': 'No refresh token.'}, status=status.HTTP_401_UNAUTHORIZED)
+        serializer = TokenRefreshSerializer(data={'refresh': raw_refresh})
+        try:
+            serializer.is_valid(raise_exception=True)
+        except TokenError:
+            response = Response({'detail': 'Refresh token is invalid or expired.'}, status=status.HTTP_401_UNAUTHORIZED)
+            _clear_auth_cookies(response)
+            return response
+        data = serializer.validated_data
+        response = Response({'detail': 'Token refreshed.'})
+        refresh_to_set = str(data['refresh']) if 'refresh' in data else None
+        _set_auth_cookies(response, str(data['access']), refresh_to_set)
+        return response
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class CookieTokenBlacklistView(APIView):
+    permission_classes = []
+    authentication_classes = []
+
+    def post(self, request):
+        raw_refresh = request.COOKIES.get('refresh_token')
+        if raw_refresh:
+            try:
+                RefreshToken(raw_refresh).blacklist()
+            except TokenError:
+                pass
+        response = Response(status=status.HTTP_204_NO_CONTENT)
+        _clear_auth_cookies(response)
+        return response
+
+
+@method_decorator(ensure_csrf_cookie, name='dispatch')
+class CSRFView(APIView):
+    permission_classes = []
+    authentication_classes = []
+
+    def get(self, request):
+        return Response({'detail': 'CSRF cookie set.'})
 
 
 class UserViewSet(ModelViewSet):

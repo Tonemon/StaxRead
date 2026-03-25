@@ -1,26 +1,27 @@
 /**
  * Runs once on every hard page load (client-only).
- * If a stored token exists, verify it against /auth/me/ and refresh the
- * user record in the store.  This guarantees is_superuser is correctly
- * set before any layout computes navItems — even when useLocalStorage
- * hasn't fully synced during Nuxt's initial render pass.
- * A 401 response means the token has expired: clear auth and redirect.
+ * Ensures the CSRF cookie is set, then verifies session against /auth/me/.
+ * A 401 means the access token has expired: clear auth and redirect.
  */
 export default defineNuxtPlugin(async () => {
   const authStore = useAuthStore()
   const config = useRuntimeConfig()
   const colorMode = useColorMode()
 
-  if (!authStore.accessToken) return
+  // Always fetch CSRF cookie first so subsequent POST requests can include it.
+  await $fetch(`${config.public.apiBase}/auth/csrf/`, { credentials: 'include' }).catch(() => {})
+
+  if (!authStore.user) return
 
   try {
     const user = await $fetch<{ id: string; username: string; email: string; is_superuser: boolean; theme: 'system' | 'light' | 'dark' }>(
       `${config.public.apiBase}/auth/me/`,
-      { headers: { Authorization: `Bearer ${authStore.accessToken}` } },
+      { credentials: 'include' },
     )
     authStore.setUser(user)
     colorMode.preference = user.theme ?? 'system'
-  } catch {
+  }
+  catch {
     authStore.clear()
     await navigateTo('/login')
   }
