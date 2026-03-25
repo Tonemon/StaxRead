@@ -69,15 +69,16 @@ def get_presigned_url(source_id: uuid.UUID, extension: str, filename: str = "", 
     client = get_minio_client()
     ext = extension if extension.startswith(".") else f".{extension}"
     object_name = f"documents/{source_id}{ext}"
-    response_headers = {}
     if filename:
         encoded = urllib.parse.quote(filename, safe="")
-        response_headers["response-content-disposition"] = f"attachment; filename*=UTF-8''{encoded}"
+        response_headers = {"response-content-disposition": f"attachment; filename*=UTF-8''{encoded}"}
+    else:
+        response_headers = {"response-content-disposition": "inline"}
     url = client.presigned_get_object(
         bucket_name=settings.MINIO_BUCKET,
         object_name=object_name,
         expires=timedelta(hours=expires_hours),
-        response_headers=response_headers or None,
+        response_headers=response_headers,
     )
     scheme = "https" if settings.MINIO_USE_SSL else "http"
     internal_origin = f"{scheme}://{settings.MINIO_ENDPOINT}"
